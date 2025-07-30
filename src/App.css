@@ -1,0 +1,512 @@
+/* 全局动画配置 */
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  padding: 0;
+}
+
+/* 页面切换动画 */
+.page-transition {
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* 卡牌动画 */
+.card-item {
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  position: relative;
+  overflow: hidden;
+}
+
+.card-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.5s;
+}
+
+.card-item:hover::before {
+  left: 100%;
+}
+
+.card-item:hover {
+  transform: translateY(-8px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.3) !important;
+}
+
+.card-item:active {
+  transform: translateY(-4px) scale(0.98);
+}
+
+/* 按钮动画 */
+.animated-button {
+  position: relative;
+  overflow: hidden;
+  transition: all 0.3s cubic-bezier(0.23, 1, 0.320, 1);
+  cursor: pointer;
+}
+
+.animated-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+}
+
+.animated-button:active {
+  transform: translateY(0);
+  transition: all 0.1s;
+}
+
+.animated-button::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+  transition: left 0.6s;
+}
+
+.animated-button:hover::before {
+  left: 100%;
+}
+
+/* 标签页动画 */
+.tab-button {
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tab-button.active {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.3);
+}
+
+.tab-button.active::after {
+  content: '';
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60%;
+  height: 3px;
+  background: linear-gradient(45deg, #FFD700, #FF6B6B);
+  border-radius: 2px;
+  animation: expandWidth 0.3s ease-out;
+}
+
+@keyframes expandWidth {
+  from { width: 0; }
+  to { width: 60%; }
+}
+
+/* 加载动画 */
+.loading-spinner {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.pulse {
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 10px rgba(255, 107, 107, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 107, 107, 0);
+  }
+}
+
+/* 卡牌翻转动画 */
+.card-flip {
+  perspective: 1000px;
+}
+
+.card-flip-inner {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  text-align: center;
+  transition: transform 0.8s;
+  transform-style: preserve-3d;
+}
+
+.card-flip:hover .card-flip-inner {
+  transform: rotateY(180deg);
+}
+
+.card-flip-front, .card-flip-back {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  backface-visibility: hidden;
+  border-radius: 15px;
+}
+
+.card-flip-back {
+  transform: rotateY(180deg);
+  background: rgba(0,0,0,0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+}
+
+/* 抽卡动画 */
+@keyframes drawCard {
+  0% {
+    transform: scale(0) rotate(180deg);
+    opacity: 0;
+  }
+  50% {
+    transform: scale(1.2) rotate(90deg);
+    opacity: 0.7;
+  }
+  100% {
+    transform: scale(1) rotate(0deg);
+    opacity: 1;
+  }
+}
+
+.draw-card-animation {
+  animation: drawCard 1s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+}
+
+/* 胜利/失败动画 */
+@keyframes victory {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(1.1) rotate(5deg); }
+  75% { transform: scale(1.1) rotate(-5deg); }
+}
+
+@keyframes defeat {
+  0%, 100% { transform: scale(1); }
+  25% { transform: scale(0.95); opacity: 0.7; }
+  75% { transform: scale(0.95); opacity: 0.7; }
+}
+
+.victory-animation {
+  animation: victory 0.6s ease-in-out;
+}
+
+.defeat-animation {
+  animation: defeat 0.6s ease-in-out;
+}
+
+/* 粒子效果 */
+.particles {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.particle {
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: #FFD700;
+  border-radius: 50%;
+  animation: float 3s infinite linear;
+}
+
+@keyframes float {
+  0% {
+    transform: translateY(100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-100px) rotate(360deg);
+    opacity: 0;
+  }
+}
+
+/* 渐变背景动画 */
+.animated-background {
+  background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+  background-size: 400% 400%;
+  animation: gradientShift 15s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* 文字发光效果 */
+.glow-text {
+  text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor;
+  animation: glow 2s ease-in-out infinite alternate;
+}
+
+@keyframes glow {
+  from { text-shadow: 0 0 10px currentColor, 0 0 20px currentColor, 0 0 30px currentColor; }
+  to { text-shadow: 0 0 20px currentColor, 0 0 30px currentColor, 0 0 40px currentColor; }
+}
+
+/* 波纹效果 */
+.ripple {
+  position: relative;
+  overflow: hidden;
+}
+
+.ripple::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.3);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s;
+}
+
+.ripple:active::after {
+  width: 300px;
+  height: 300px;
+}
+
+/* 数字计数动画 */
+.counter-animation {
+  display: inline-block;
+  transition: transform 0.3s ease;
+}
+
+.counter-animation.updating {
+  animation: countUp 0.5s ease-out;
+}
+
+@keyframes countUp {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.2); color: #FFD700; }
+  100% { transform: scale(1); }
+}
+
+/* 声音效果模拟 */
+.sound-effect {
+  animation: soundWave 0.5s ease-out;
+}
+
+@keyframes soundWave {
+  0% { transform: scale(1); }
+  25% { transform: scale(1.05); }
+  50% { transform: scale(1.1); }
+  75% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* 卡牌特效 */
+.card-rarity-1 {
+  box-shadow: 0 0 20px rgba(136, 136, 136, 0.5);
+}
+
+.card-rarity-2 {
+  box-shadow: 0 0 20px rgba(74, 144, 226, 0.5);
+  animation: rarityGlow-2 2s ease-in-out infinite alternate;
+}
+
+.card-rarity-3 {
+  box-shadow: 0 0 25px rgba(155, 89, 182, 0.6);
+  animation: rarityGlow-3 1.8s ease-in-out infinite alternate;
+}
+
+.card-rarity-4 {
+  box-shadow: 0 0 30px rgba(241, 196, 15, 0.7);
+  animation: rarityGlow-4 1.5s ease-in-out infinite alternate;
+}
+
+.card-rarity-5 {
+  box-shadow: 0 0 35px rgba(231, 76, 60, 0.8);
+  animation: rarityGlow-5 1.2s ease-in-out infinite alternate;
+}
+
+@keyframes rarityGlow-2 {
+  from { box-shadow: 0 0 20px rgba(74, 144, 226, 0.5); }
+  to { box-shadow: 0 0 30px rgba(74, 144, 226, 0.8); }
+}
+
+@keyframes rarityGlow-3 {
+  from { box-shadow: 0 0 25px rgba(155, 89, 182, 0.6); }
+  to { box-shadow: 0 0 35px rgba(155, 89, 182, 0.9); }
+}
+
+@keyframes rarityGlow-4 {
+  from { box-shadow: 0 0 30px rgba(241, 196, 15, 0.7); }
+  to { box-shadow: 0 0 40px rgba(241, 196, 15, 1); }
+}
+
+@keyframes rarityGlow-5 {
+  from { box-shadow: 0 0 35px rgba(231, 76, 60, 0.8); }
+  to { box-shadow: 0 0 45px rgba(231, 76, 60, 1); }
+}
+
+/* 移动端适配 */
+@media (max-width: 768px) {
+  .card-item {
+    margin: 10px 0;
+  }
+  
+  .animated-background {
+    padding: 20px;
+  }
+  
+  .glow-text {
+    font-size: 2rem !important;
+  }
+  
+  .tab-button {
+    margin: 5px !important;
+    padding: 8px 15px !important;
+    font-size: 0.9rem;
+  }
+  
+  .animated-button {
+    width: 100%;
+    margin: 5px 0;
+  }
+}
+
+@media (max-width: 480px) {
+  .animated-background {
+    padding: 15px;
+  }
+  
+  .glow-text {
+    font-size: 1.8rem !important;
+  }
+  
+  .card-item {
+    padding: 15px;
+  }
+}
+
+/* 成就系统动画 */
+.achievement-popup {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  background: linear-gradient(45deg, #FFD700, #FFA500);
+  color: #000;
+  padding: 15px 20px;
+  border-radius: 10px;
+  font-weight: bold;
+  z-index: 1000;
+  animation: achievementSlide 3s ease-out;
+  box-shadow: 0 5px 15px rgba(255, 215, 0, 0.5);
+}
+
+@keyframes achievementSlide {
+  0% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  10%, 90% {
+    transform: translateX(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+/* 主题切换动画 */
+.theme-dark {
+  background: linear-gradient(-45deg, #1a1a2e, #16213e, #0f3460, #1a1a2e);
+}
+
+.theme-light {
+  background: linear-gradient(-45deg, #ffecd2, #fcb69f, #ff9a9e, #fecfef);
+  color: #333 !important;
+}
+
+.theme-transition {
+  transition: all 0.5s ease;
+}
+
+/* 数据统计面板 */
+.stats-panel {
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(10px);
+  border-radius: 15px;
+  padding: 20px;
+  margin: 20px 0;
+  animation: slideInLeft 0.6s ease-out;
+}
+
+@keyframes slideInLeft {
+  from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+/* 连击效果 */
+.combo-effect {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 2rem;
+  font-weight: bold;
+  color: #FFD700;
+  animation: comboAnimation 1s ease-out;
+  pointer-events: none;
+  z-index: 100;
+}
+
+@keyframes comboAnimation {
+  0% {
+    transform: translate(-50%, -50%) scale(0);
+    opacity: 0;
+  }
+  50% {
+    transform: translate(-50%, -70%) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(-50%, -90%) scale(1);
+    opacity: 0;
+  }
+}
