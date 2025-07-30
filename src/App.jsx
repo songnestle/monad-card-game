@@ -1,8 +1,141 @@
 import { useState, useEffect } from 'react'
 import { ethers } from 'ethers'
-import { cryptoCards, rarityNames } from './cryptoCards.js'
-import { PriceSimulator } from './priceSimulator.js' 
 import './App.css'
+
+// 内联加密货币卡牌数据
+const cryptoCards = [
+  { id: 1, symbol: 'BTC', name: 'Bitcoin', rarity: 5, emoji: '₿', color: '#F7931A' },
+  { id: 2, symbol: 'ETH', name: 'Ethereum', rarity: 5, emoji: 'Ξ', color: '#627EEA' },
+  { id: 3, symbol: 'SOL', name: 'Solana', rarity: 4, emoji: '◎', color: '#9945FF' },
+  { id: 4, symbol: 'ADA', name: 'Cardano', rarity: 4, emoji: '₳', color: '#0033AD' },
+  { id: 5, symbol: 'AVAX', name: 'Avalanche', rarity: 4, emoji: '🔺', color: '#E84142' },
+  { id: 6, symbol: 'DOT', name: 'Polkadot', rarity: 4, emoji: '⚫', color: '#E6007A' },
+  { id: 7, symbol: 'MATIC', name: 'Polygon', rarity: 3, emoji: '🔷', color: '#8247E5' },
+  { id: 8, symbol: 'LTC', name: 'Litecoin', rarity: 3, emoji: 'Ł', color: '#A6A9AA' },
+  { id: 9, symbol: 'LINK', name: 'Chainlink', rarity: 3, emoji: '🔗', color: '#375BD2' },
+  { id: 10, symbol: 'UNI', name: 'Uniswap', rarity: 3, emoji: '🦄', color: '#FF007A' },
+  { id: 11, symbol: 'ATOM', name: 'Cosmos', rarity: 3, emoji: '🪐', color: '#2E3148' },
+  { id: 12, symbol: 'FTM', name: 'Fantom', rarity: 3, emoji: '👻', color: '#1969FF' },
+  { id: 13, symbol: 'ALGO', name: 'Algorand', rarity: 2, emoji: '🔺', color: '#000000' },
+  { id: 14, symbol: 'VET', name: 'VeChain', rarity: 2, emoji: '✅', color: '#15BDFF' },
+  { id: 15, symbol: 'XLM', name: 'Stellar', rarity: 2, emoji: '🌟', color: '#7D00FF' },
+  { id: 16, symbol: 'ICP', name: 'Internet Computer', rarity: 2, emoji: '♾️', color: '#29ABE2' },
+  { id: 17, symbol: 'THETA', name: 'Theta Network', rarity: 2, emoji: '📺', color: '#2AB8E6' },
+  { id: 18, symbol: 'FIL', name: 'Filecoin', rarity: 2, emoji: '📁', color: '#0090FF' },
+  { id: 19, symbol: 'XTZ', name: 'Tezos', rarity: 2, emoji: '🔷', color: '#2C7DF7' },
+  { id: 20, symbol: 'EGLD', name: 'MultiversX', rarity: 2, emoji: '⚡', color: '#23F7DD' },
+  { id: 21, symbol: 'HBAR', name: 'Hedera', rarity: 1, emoji: '🌐', color: '#FF0000' },
+  { id: 22, symbol: 'NEAR', name: 'NEAR Protocol', rarity: 1, emoji: '🌈', color: '#00C08B' },
+  { id: 23, symbol: 'FLOW', name: 'Flow', rarity: 1, emoji: '🌊', color: '#00EF8B' },
+  { id: 24, symbol: 'MANA', name: 'Decentraland', rarity: 1, emoji: '🏰', color: '#FF2D55' },
+  { id: 25, symbol: 'SAND', name: 'The Sandbox', rarity: 1, emoji: '🏖️', color: '#00ADEF' }
+];
+
+const rarityNames = {
+  1: "普通",
+  2: "稀有", 
+  3: "史诗",
+  4: "传说",
+  5: "神话"
+};
+
+// 内联价格模拟器类
+class PriceSimulator {
+  constructor() {
+    this.prices = {};
+    this.volatility = {};
+    this.trends = {};
+    this.lastUpdate = Date.now();
+    
+    // 初始化所有加密货币的价格
+    cryptoCards.forEach(card => {
+      this.prices[card.id] = this.getInitialPrice(card.rarity);
+      this.volatility[card.id] = this.getVolatility(card.rarity);
+      this.trends[card.id] = Math.random() > 0.5 ? 1 : -1; // 1为上涨趋势，-1为下跌趋势
+    });
+  }
+  
+  getInitialPrice(rarity) {
+    const basePrices = {
+      1: 100 + Math.random() * 500,    // 普通: 100-600
+      2: 500 + Math.random() * 1500,   // 稀有: 500-2000  
+      3: 1500 + Math.random() * 3500,  // 史诗: 1500-5000
+      4: 5000 + Math.random() * 15000, // 传说: 5000-20000
+      5: 20000 + Math.random() * 30000 // 神话: 20000-50000
+    };
+    return basePrices[rarity] || 100;
+  }
+  
+  getVolatility(rarity) {
+    const volatilityMap = {
+      1: 0.05, // 普通卡牌波动较小
+      2: 0.08,
+      3: 0.12,
+      4: 0.15,
+      5: 0.20  // 神话卡牌波动最大
+    };
+    return volatilityMap[rarity] || 0.05;
+  }
+  
+  updatePrice(cardId) {
+    const currentPrice = this.prices[cardId];
+    const volatility = this.volatility[cardId];
+    const trend = this.trends[cardId];
+    
+    // 随机价格变化，包含趋势影响
+    const randomChange = (Math.random() - 0.5) * 2; // -1 到 1
+    const trendInfluence = trend * 0.3; // 趋势影响
+    const totalChange = randomChange + trendInfluence;
+    
+    const changePercent = totalChange * volatility;
+    const newPrice = currentPrice * (1 + changePercent);
+    
+    // 确保价格不会变成负数或过小
+    this.prices[cardId] = Math.max(newPrice, currentPrice * 0.5);
+    
+    // 随机改变趋势
+    if (Math.random() < 0.1) { // 10%概率改变趋势
+      this.trends[cardId] *= -1;
+    }
+    
+    return {
+      cardId,
+      oldPrice: currentPrice,
+      newPrice: this.prices[cardId],
+      change: changePercent
+    };
+  }
+  
+  updateAllPrices() {
+    const changes = [];
+    const now = Date.now();
+    
+    // 只有距离上次更新超过1秒才更新
+    if (now - this.lastUpdate > 1000) {
+      cryptoCards.forEach(card => {
+        changes.push(this.updatePrice(card.id));
+      });
+      this.lastUpdate = now;
+    }
+    
+    return changes;
+  }
+  
+  getPrice(cardId) {
+    return this.prices[cardId] || 0;
+  }
+  
+  getMarketOverview() {
+    const totalMarketCap = Object.values(this.prices).reduce((sum, price) => sum + price, 0);
+    const avgPrice = totalMarketCap / Object.keys(this.prices).length;
+    
+    return {
+      totalMarketCap: totalMarketCap.toFixed(2),
+      avgPrice: avgPrice.toFixed(2),
+      activePairs: Object.keys(this.prices).length
+    };
+  }
+}
 
 const RPC_URL = import.meta.env.VITE_RPC_URL
 const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS
