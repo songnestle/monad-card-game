@@ -190,9 +190,9 @@ function App() {
   const [theme, setTheme] = useState('dark')
   const [dailyCardsReceived, setDailyCardsReceived] = useState(false)
   const [priceSimulator] = useState(new PriceSimulator())
-  const [currentPrices] = useState({})
-  const [priceChanges] = useState({})
-  const [marketOverview] = useState(null)
+  const [currentPrices, setCurrentPrices] = useState({})
+  const [priceChanges, setPriceChanges] = useState({})
+  const [marketOverview, setMarketOverview] = useState(null)
 
   const loadData = async () => {
     if (!window.ethereum || !CONTRACT_ADDRESS) {
