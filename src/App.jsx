@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers'
 import './App.css'
 
@@ -190,11 +190,12 @@ function App() {
   const [theme, setTheme] = useState('dark')
   const [dailyCardsReceived, setDailyCardsReceived] = useState(false)
   const [priceSimulator] = useState(new PriceSimulator())
-  const [currentPrices, setCurrentPrices] = useState({})
-  const [priceChanges, setPriceChanges] = useState({})
-  const [marketOverview, setMarketOverview] = useState(null)
+  // 价格相关状态 - 暂时不使用，保留以备扩展
+  // const [currentPrices, setCurrentPrices] = useState({})
+  // const [priceChanges, setPriceChanges] = useState({})
+  // const [marketOverview, setMarketOverview] = useState(null)
 
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     if (!window.ethereum || !CONTRACT_ADDRESS) {
       console.log('钱包或合约地址未配置')
       return
@@ -245,7 +246,7 @@ function App() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
 
   // 成就检查函数
   const checkAchievements = (cards) => {
@@ -304,25 +305,14 @@ function App() {
     const priceInterval = setInterval(updatePrices, 30000)
     
     return () => clearInterval(priceInterval)
-  }, [])
+  }, [loadData, updatePrices])
 
-  // 价格更新函数
-  const updatePrices = async () => {
+  // 价格更新函数 - 暂时禁用
+  const updatePrices = useCallback(async () => {
     const changes = priceSimulator.updateAllPrices()
-    const prices = {}
-    const changeMap = {}
-    
-    changes.forEach(change => {
-      prices[change.cardId] = change.newPrice
-      changeMap[change.cardId] = change.change
-    })
-    
-    setCurrentPrices(prices)
-    setPriceChanges(changeMap)
-    setMarketOverview(priceSimulator.getMarketOverview())
-    
     console.log('价格更新:', changes.length, '个币种')
-  }
+    // 暂时不更新UI状态，避免未使用变量警告
+  }, [priceSimulator])
 
   // 选择卡牌函数
   const toggleCardSelection = (cardIndex) => {
