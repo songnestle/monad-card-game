@@ -455,6 +455,21 @@ function CleanApp() {
     }
 
     try {
+      // 🚨 紧急网络验证
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' })
+      const chainIdNum = parseInt(currentChainId, 16)
+      
+      if (chainIdNum !== MONAD_NETWORK.chainId) {
+        addNotification(
+          `❌ 错误网络！当前网络ID: ${chainIdNum}，需要切换到Monad测试网 (${MONAD_NETWORK.chainId})`,
+          'error'
+        )
+        const switched = await switchToMonadNetwork()
+        if (!switched) {
+          throw new Error('必须切换到Monad测试网才能操作')
+        }
+      }
+      
       showLoading('正在领取每日卡牌...')
       
       const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, walletState.signer)
@@ -512,6 +527,21 @@ function CleanApp() {
     }
 
     try {
+      // 🚨 紧急网络验证
+      const currentChainId = await window.ethereum.request({ method: 'eth_chainId' })
+      const chainIdNum = parseInt(currentChainId, 16)
+      
+      if (chainIdNum !== MONAD_NETWORK.chainId) {
+        addNotification(
+          `❌ 错误网络！当前网络ID: ${chainIdNum}，需要切换到Monad测试网 (${MONAD_NETWORK.chainId})`,
+          'error'
+        )
+        const switched = await switchToMonadNetwork()
+        if (!switched) {
+          throw new Error('必须切换到Monad测试网才能操作')
+        }
+      }
+      
       showLoading('正在创建手牌...')
       
       const contract = new ethers.Contract(CONTRACT_ADDRESS, abi, walletState.signer)
@@ -679,7 +709,20 @@ function CleanApp() {
         </h1>
         <p style={{ color: '#bbb', fontSize: '1.2rem' }}>
           {walletState.isConnected ? (
-            <>地址: {walletState.account.slice(0,8)}... | 卡牌: {cards.length} 张</>
+            <>
+              地址: {walletState.account.slice(0,8)}... | 卡牌: {cards.length} 张
+              <br />
+              <span style={{ 
+                color: walletState.chainId === MONAD_NETWORK.chainId ? '#27AE60' : '#E74C3C',
+                fontWeight: 'bold',
+                fontSize: '1rem'
+              }}>
+                {walletState.chainId === MONAD_NETWORK.chainId ? 
+                  '✅ Monad测试网 (正确)' : 
+                  `❌ 错误网络 (ID: ${walletState.chainId})`
+                }
+              </span>
+            </>
           ) : (
             '连接钱包开始游戏'
           )}
