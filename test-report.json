@@ -1,0 +1,182 @@
+{
+  "timestamp": "2025-08-03T11:06:36.238Z",
+  "results": [
+    {
+      "category": "代码质量",
+      "tests": [
+        {
+          "name": "文件存在: src/SecureApp.jsx",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "文件存在: src/components/ErrorBoundary.jsx",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "文件存在: src/hooks/usePerformanceMonitor.js",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "文件存在: src/utils/testUtils.js",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "文件存在: .env",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "文件存在: package.json",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "代码复杂度: src/SecureApp.jsx",
+          "passed": false,
+          "details": "1333 行, 90 函数",
+          "error": "函数过多"
+        },
+        {
+          "name": "代码复杂度: src/components/ErrorBoundary.jsx",
+          "passed": true,
+          "details": "216 行, 1 函数",
+          "error": null
+        },
+        {
+          "name": "代码复杂度: src/hooks/usePerformanceMonitor.js",
+          "passed": true,
+          "details": "293 行, 38 函数",
+          "error": null
+        }
+      ],
+      "passed": false,
+      "summary": "8/9 测试通过"
+    },
+    {
+      "category": "依赖检查",
+      "tests": [
+        {
+          "name": "package.json 解析",
+          "passed": true,
+          "details": "6 依赖项"
+        },
+        {
+          "name": "依赖项: react",
+          "passed": true,
+          "details": "版本: ^19.0.0",
+          "error": null
+        },
+        {
+          "name": "依赖项: ethers",
+          "passed": true,
+          "details": "版本: ^6.13.5",
+          "error": null
+        },
+        {
+          "name": "node_modules 目录",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "passed": true,
+      "summary": "4/4 测试通过"
+    },
+    {
+      "category": "环境配置",
+      "tests": [
+        {
+          "name": ".env 文件存在",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": ".env 文件内容",
+          "passed": true,
+          "details": "2 个环境变量",
+          "error": null
+        },
+        {
+          "name": "环境变量: VITE_CONTRACT_ADDRESS",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "环境变量: VITE_RPC_URL",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "passed": true,
+      "summary": "4/4 测试通过"
+    },
+    {
+      "category": "构建测试",
+      "tests": [
+        {
+          "name": "构建执行",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "构建产物: dist/index.html",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "构建产物: dist/assets",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "构建产物大小",
+          "passed": true,
+          "details": "构建目录大小: 0.25 KB"
+        }
+      ],
+      "passed": true,
+      "summary": "4/4 测试通过"
+    },
+    {
+      "category": "安全检查",
+      "tests": [
+        {
+          "name": "敏感信息检查: src/SecureApp.jsx",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "敏感信息检查: src/components/ErrorBoundary.jsx",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "敏感信息检查: src/hooks/usePerformanceMonitor.js",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "HTML注入防护: src/SecureApp.jsx",
+          "passed": true,
+          "error": null
+        },
+        {
+          "name": "React错误边界",
+          "passed": true,
+          "error": null
+        }
+      ],
+      "passed": true,
+      "summary": "5/5 测试通过"
+    }
+  ],
+  "summary": {
+    "totalTests": 26,
+    "totalPassed": 25,
+    "passRate": 0.9615384615384616,
+    "allPassed": false
+  }
+}
