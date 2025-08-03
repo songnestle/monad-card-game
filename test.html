@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>MIME Type Test</title>
+    <meta charset="UTF-8">
+</head>
+<body>
+    <h1>Testing JavaScript Module Loading</h1>
+    <div id="status"></div>
+    
+    <script>
+        // Test if we can fetch the main JS file with correct MIME type
+        async function testJSFile() {
+            try {
+                const response = await fetch('/assets/index-BNAyAW82.js');
+                const contentType = response.headers.get('content-type');
+                
+                document.getElementById('status').innerHTML = `
+                    <p><strong>Status:</strong> ${response.status}</p>
+                    <p><strong>Content-Type:</strong> ${contentType}</p>
+                    <p><strong>Result:</strong> ${contentType && contentType.includes('javascript') ? '✅ SUCCESS' : '❌ FAILED'}</p>
+                `;
+            } catch (error) {
+                document.getElementById('status').innerHTML = `
+                    <p><strong>Error:</strong> ${error.message}</p>
+                `;
+            }
+        }
+        
+        testJSFile();
+    </script>
+</body>
+</html>
