@@ -1,0 +1,64 @@
+# Vercel ignore file - files to exclude from deployment
+
+# Dependencies
+node_modules
+
+# Build output (handled by Vercel)
+dist
+
+# Environment files (handled by Vercel settings)
+.env
+.env.local
+.env.production
+
+# Logs
+*.log
+npm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+
+# Coverage directory used by tools like istanbul
+coverage
+
+# IDE/Editor files
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS generated files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+
+# Documentation (not needed for deployment)
+*.md
+!README.md
+
+# Scripts
+*.sh
+*.py
+*.mjs
+
+# Test files
+test-*
+*test*
+
+# Development utilities
+eslint.config.js
+vite.config.js
+
+# Compressed archives
+*.tar.gz
+*.zip

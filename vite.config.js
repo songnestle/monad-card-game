@@ -4,7 +4,8 @@ import react from '@vitejs/plugin-react'
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [react()],
-  base: '/monad-card-game/',
+  // Remove base path for Vercel deployment (use '/' for root deployment)
+  base: '/',
   build: {
     rollupOptions: {
       output: {
