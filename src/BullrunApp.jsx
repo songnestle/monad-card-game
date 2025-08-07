@@ -11,7 +11,7 @@
  * - 优化的用户界面和体验
  */
 
-import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react'
 import { ethers } from 'ethers'
 import './App.css'
 
