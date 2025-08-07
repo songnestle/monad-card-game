@@ -1,7 +1,7 @@
-import { StrictMode } from 'react'
+import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import EmergencyApp from './EmergencyApp.jsx'
+import SafestApp from './SafestApp.jsx'
 
 // 全局错误处理 - 在应用启动前就开始工作
 console.log('🚀 [Main] Monad Card Game 启动序列开始...')
@@ -23,10 +23,10 @@ const startApp = () => {
     console.log('⚛️ [Main] 创建React根节点...')
     const root = createRoot(rootElement)
     
-    console.log('🚨 [Main] 渲染EmergencyApp（紧急模式）...')
+    console.log('🛡️ [Main] 渲染SafestApp（最安全模式）...')
     root.render(
       <StrictMode>
-        <EmergencyApp />
+        <SafestApp />
       </StrictMode>
     )
     
