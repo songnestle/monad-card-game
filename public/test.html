@@ -1,33 +1,246 @@
 <!DOCTYPE html>
-<html>
+<html lang="zh-CN">
 <head>
-    <title>MIME Type Test</title>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>钱包冲突测试页面</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f0f0f0;
+        }
+        .test-section {
+            background: white;
+            padding: 20px;
+            margin: 10px 0;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 5px 0;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .warning { background: #fff3cd; color: #856404; }
+        .error { background: #f8d7da; color: #721c24; }
+        button {
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #0056b3; }
+        pre {
+            background: #f8f9fa;
+            padding: 10px;
+            border-radius: 4px;
+            overflow-x: auto;
+        }
+    </style>
 </head>
 <body>
-    <h1>Testing JavaScript Module Loading</h1>
-    <div id="status"></div>
+    <h1>🎴 Monad卡牌游戏 - 钱包冲突诊断</h1>
     
+    <div class="test-section">
+        <h2>钱包检测状态</h2>
+        <div id="wallet-status"></div>
+        <button onclick="refreshStatus()">刷新状态</button>
+        <button onclick="testConnection()">测试连接</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>错误日志</h2>
+        <div id="error-log"></div>
+        <button onclick="clearLog()">清空日志</button>
+    </div>
+    
+    <div class="test-section">
+        <h2>原始调试信息</h2>
+        <pre id="debug-info"></pre>
+    </div>
+
     <script>
-        // Test if we can fetch the main JS file with correct MIME type
-        async function testJSFile() {
+        let errorLog = [];
+        
+        // 捕获所有错误
+        window.onerror = function(message, source, lineno, colno, error) {
+            if (source && source.includes('chrome-extension://')) {
+                return; // 忽略扩展错误
+            }
+            
+            errorLog.push({
+                type: 'Error',
+                message: message,
+                source: source,
+                line: lineno,
+                timestamp: new Date().toISOString()
+            });
+            updateErrorLog();
+        };
+        
+        window.addEventListener('unhandledrejection', function(event) {
+            if (event.reason?.message?.includes('MetaMask')) {
+                event.preventDefault();
+                return;
+            }
+            
+            errorLog.push({
+                type: 'Unhandled Promise Rejection',
+                message: event.reason?.message || event.reason,
+                timestamp: new Date().toISOString()
+            });
+            updateErrorLog();
+        });
+        
+        function updateErrorLog() {
+            const logDiv = document.getElementById('error-log');
+            logDiv.innerHTML = errorLog.map(err => 
+                `<div class="error">
+                    <strong>${err.type}</strong> (${err.timestamp})<br>
+                    ${err.message}
+                    ${err.source ? `<br><small>Source: ${err.source}:${err.line}</small>` : ''}
+                </div>`
+            ).join('');
+        }
+        
+        function clearLog() {
+            errorLog = [];
+            updateErrorLog();
+        }
+        
+        function detectWallets() {
+            const result = {
+                hasWindow: typeof window !== 'undefined',
+                hasEthereum: !!window.ethereum,
+                ethereumProperties: {},
+                providers: [],
+                conflicts: []
+            };
+            
             try {
-                const response = await fetch('/assets/index-BNAyAW82.js');
-                const contentType = response.headers.get('content-type');
+                if (window.ethereum) {
+                    result.ethereumProperties = {
+                        isMetaMask: !!window.ethereum.isMetaMask,
+                        isNightly: !!window.ethereum.isNightly,
+                        isCoinbaseWallet: !!window.ethereum.isCoinbaseWallet,
+                        hasProviders: !!window.ethereum.providers,
+                        providersCount: window.ethereum.providers?.length || 0
+                    };
+                    
+                    if (window.ethereum.providers) {
+                        result.providers = window.ethereum.providers.map((p, i) => ({
+                            index: i,
+                            isMetaMask: !!p.isMetaMask,
+                            isNightly: !!p.isNightly,
+                            isCoinbaseWallet: !!p.isCoinbaseWallet
+                        }));
+                    }
+                }
                 
-                document.getElementById('status').innerHTML = `
-                    <p><strong>Status:</strong> ${response.status}</p>
-                    <p><strong>Content-Type:</strong> ${contentType}</p>
-                    <p><strong>Result:</strong> ${contentType && contentType.includes('javascript') ? '✅ SUCCESS' : '❌ FAILED'}</p>
-                `;
+                // 检测冲突
+                if (window.ethereum?.isNightly && window.ethereum?.isMetaMask) {
+                    result.conflicts.push('Nightly钱包覆盖了MetaMask属性');
+                }
+                
+                if (window.__metamask) {
+                    result.conflicts.push('检测到MetaMask备份引用');
+                }
+                
+                if (window.__ethereum_backup) {
+                    result.conflicts.push('检测到Ethereum备份引用');
+                }
+                
             } catch (error) {
-                document.getElementById('status').innerHTML = `
-                    <p><strong>Error:</strong> ${error.message}</p>
-                `;
+                result.error = error.message;
+            }
+            
+            return result;
+        }
+        
+        function refreshStatus() {
+            const status = detectWallets();
+            const statusDiv = document.getElementById('wallet-status');
+            
+            let html = '';
+            
+            if (status.hasEthereum) {
+                html += '<div class="success">✅ 检测到window.ethereum</div>';
+            } else {
+                html += '<div class="error">❌ 未检测到window.ethereum</div>';
+            }
+            
+            if (status.ethereumProperties.isMetaMask) {
+                html += '<div class="success">✅ MetaMask可用</div>';
+            } else {
+                html += '<div class="warning">⚠️ MetaMask不可用</div>';
+            }
+            
+            if (status.ethereumProperties.isNightly) {
+                html += '<div class="warning">⚠️ Nightly钱包活跃</div>';
+            }
+            
+            if (status.providers.length > 0) {
+                html += `<div class="status">📦 检测到${status.providers.length}个提供者:</div>`;
+                status.providers.forEach(p => {
+                    const types = [];
+                    if (p.isMetaMask) types.push('MetaMask');
+                    if (p.isNightly) types.push('Nightly');
+                    if (p.isCoinbaseWallet) types.push('Coinbase');
+                    html += `<div class="status">- 提供者 ${p.index}: ${types.join(', ') || '未知'}</div>`;
+                });
+            }
+            
+            if (status.conflicts.length > 0) {
+                html += '<div class="error">⚠️ 检测到冲突:</div>';
+                status.conflicts.forEach(conflict => {
+                    html += `<div class="error">- ${conflict}</div>`;
+                });
+            }
+            
+            if (status.error) {
+                html += `<div class="error">❌ 检测错误: ${status.error}</div>`;
+            }
+            
+            statusDiv.innerHTML = html;
+            
+            // 更新调试信息
+            document.getElementById('debug-info').textContent = JSON.stringify(status, null, 2);
+        }
+        
+        async function testConnection() {
+            try {
+                if (!window.ethereum) {
+                    throw new Error('未检测到钱包');
+                }
+                
+                const accounts = await window.ethereum.request({
+                    method: 'eth_requestAccounts'
+                });
+                
+                if (accounts.length > 0) {
+                    document.getElementById('wallet-status').innerHTML += 
+                        `<div class="success">✅ 连接成功: ${accounts[0].slice(0,6)}...${accounts[0].slice(-4)}</div>`;
+                } else {
+                    throw new Error('未获取到账户');
+                }
+                
+            } catch (error) {
+                document.getElementById('wallet-status').innerHTML += 
+                    `<div class="error">❌ 连接失败: ${error.message}</div>`;
             }
         }
         
-        testJSFile();
+        // 页面加载时自动检测
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(refreshStatus, 1000); // 延迟1秒等待扩展加载
+        });
     </script>
 </body>
 </html>

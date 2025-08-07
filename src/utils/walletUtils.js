@@ -89,14 +89,19 @@ export function detectAvailableWallets() {
 // 获取首选钱包提供者
 export function getPreferredWalletProvider() {
   try {
-    const wallets = detectAvailableWallets()
+    // 延迟执行，等待所有钱包扩展加载完成
+    const delay = new Promise(resolve => setTimeout(resolve, 100))
     
-    if (wallets.length === 0) {
-      return null
-    }
+    return delay.then(() => {
+      const wallets = detectAvailableWallets()
+      
+      if (wallets.length === 0) {
+        return null
+      }
 
-    // 返回优先级最高的钱包
-    return wallets[0].provider
+      // 返回优先级最高的钱包
+      return wallets[0].provider
+    })
   } catch (error) {
     console.error('获取钱包提供者失败:', error)
     return null
@@ -106,24 +111,54 @@ export function getPreferredWalletProvider() {
 // 安全的 ethereum 属性访问
 export function getEthereumProvider() {
   try {
+    // 等待DOM完全加载
+    if (typeof window === 'undefined') {
+      return null
+    }
+
+    // 防止访问被重定义的属性
+    let ethereum
+    try {
+      ethereum = window.ethereum
+    } catch (defineError) {
+      console.warn('window.ethereum访问失败，尝试备用方案:', defineError.message)
+      // 尝试通过原始引用访问
+      ethereum = window.__ethereum_backup || null
+    }
+
+    if (!ethereum) {
+      return null
+    }
+
     // 优先使用 MetaMask
-    if (window.ethereum?.isMetaMask) {
-      return window.ethereum
+    if (ethereum.isMetaMask && !ethereum.isNightly) {
+      return ethereum
     }
 
     // 检查多提供者情况
-    if (window.ethereum?.providers) {
-      const metamask = window.ethereum.providers.find(p => p.isMetaMask)
+    if (ethereum.providers && Array.isArray(ethereum.providers)) {
+      const metamask = ethereum.providers.find(p => p.isMetaMask && !p.isNightly)
       if (metamask) {
         return metamask
       }
       
+      // 返回第一个非Nightly提供者
+      const nonNightly = ethereum.providers.find(p => !p.isNightly)
+      if (nonNightly) {
+        return nonNightly
+      }
+      
       // 返回第一个可用提供者
-      return window.ethereum.providers[0]
+      return ethereum.providers[0]
+    }
+
+    // 检查是否是Nightly覆盖了MetaMask
+    if (ethereum.isNightly && window.__metamask) {
+      return window.__metamask
     }
 
     // 返回通用提供者
-    return window.ethereum || null
+    return ethereum
   } catch (error) {
     console.warn('获取Ethereum提供者失败:', error.message)
     return null

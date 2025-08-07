@@ -37,6 +37,7 @@ import usePerformanceMonitor, { useMemoryLeak } from './hooks/usePerformanceMoni
 
 // 导入钱包工具
 import walletUtils from './utils/walletUtils.js'
+import { initializeWalletEnvironment, getProcessedEthereumProvider } from './utils/walletInit.js'
 
 // 环境变量配置
 const BULLRUN_CONFIG = {
@@ -208,6 +209,14 @@ function BullrunApp() {
   const initializeApp = useCallback(async () => {
     try {
       startTimer('app-init')
+      setLoading({ show: true, message: '正在解决钱包冲突问题...' })
+
+      // 首先初始化钱包环境，解决扩展冲突
+      const walletEnvResult = await initializeWalletEnvironment()
+      if (!walletEnvResult.success) {
+        console.warn('钱包环境初始化警告:', walletEnvResult.error)
+      }
+
       setLoading({ show: true, message: '初始化Bullrun游戏引擎...' })
 
       // 初始化服务
@@ -261,8 +270,8 @@ function BullrunApp() {
         return false
       }
 
-      // 获取钱包提供者
-      const walletProvider = walletUtils.getEthereumProvider()
+      // 获取钱包提供者 - 使用处理后的提供者
+      const walletProvider = getProcessedEthereumProvider() || walletUtils.getEthereumProvider()
       if (!walletProvider) {
         addNotification('未检测到Web3钱包，请安装MetaMask', 'error')
         return false
