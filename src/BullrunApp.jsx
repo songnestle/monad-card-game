@@ -35,6 +35,9 @@ import DuplicateCardWarning from './components/DuplicateCardWarning.jsx'
 // 导入性能监控
 import usePerformanceMonitor, { useMemoryLeak } from './hooks/usePerformanceMonitor.js'
 
+// 导入钱包工具
+import walletUtils from './utils/walletUtils.js'
+
 // 环境变量配置
 const BULLRUN_CONFIG = {
   RPC_URL: import.meta.env.VITE_RPC_URL,
@@ -250,8 +253,18 @@ function BullrunApp() {
   // 连接钱包
   const connectWallet = useCallback(async () => {
     return await monitorAsync('connect-wallet', async () => {
-      if (typeof window.ethereum === 'undefined') {
-        addNotification('请安装MetaMask钱包', 'error')
+      // 检查钱包兼容性
+      const compatibility = walletUtils.checkWalletCompatibility()
+      if (!compatibility.isCompatible) {
+        const message = compatibility.recommendations.join(' ')
+        addNotification(message, 'error')
+        return false
+      }
+
+      // 获取钱包提供者
+      const walletProvider = walletUtils.getEthereumProvider()
+      if (!walletProvider) {
+        addNotification('未检测到Web3钱包，请安装MetaMask', 'error')
         return false
       }
 
@@ -259,16 +272,19 @@ function BullrunApp() {
         setWalletState(prev => ({ ...prev, isConnecting: true }))
         setLoading({ show: true, message: '连接钱包...' })
 
-        const accounts = await window.ethereum.request({
-          method: 'eth_requestAccounts'
-        })
+        // 安全的钱包调用
+        const accounts = await walletUtils.safeWalletCall(
+          'eth_requestAccounts', 
+          [], 
+          walletProvider
+        )
 
         if (!accounts?.length) {
           throw new Error('未获取到账户授权')
         }
 
         const account = accounts[0]
-        const provider = new ethers.BrowserProvider(window.ethereum)
+        const provider = new ethers.BrowserProvider(walletProvider)
         const signer = await provider.getSigner()
         const network = await provider.getNetwork()
         const chainId = Number(network.chainId)
@@ -276,16 +292,18 @@ function BullrunApp() {
         // 检查网络
         if (!utils.isValidNetwork(chainId)) {
           try {
-            await window.ethereum.request({
-              method: 'wallet_switchEthereumChain',
-              params: [{ chainId: BULLRUN_CONFIG.NETWORK.chainIdHex }]
-            })
+            await walletUtils.safeWalletCall(
+              'wallet_switchEthereumChain',
+              [{ chainId: BULLRUN_CONFIG.NETWORK.chainIdHex }],
+              walletProvider
+            )
           } catch (switchError) {
-            if (switchError.code === 4902) {
-              await window.ethereum.request({
-                method: 'wallet_addEthereumChain',
-                params: [BULLRUN_CONFIG.NETWORK]
-              })
+            if (switchError.message.includes('Unrecognized chain') || switchError.code === 4902) {
+              await walletUtils.safeWalletCall(
+                'wallet_addEthereumChain',
+                [BULLRUN_CONFIG.NETWORK],
+                walletProvider
+              )
             } else {
               throw switchError
             }
@@ -316,7 +334,9 @@ function BullrunApp() {
         return true
 
       } catch (error) {
-        addNotification(`连接失败: ${error.message}`, 'error')
+        const handledError = walletUtils.handleWalletError(error)
+        addNotification(handledError.message, 'error')
+        
         setWalletState(prev => ({ 
           ...prev, 
           isConnecting: false,
