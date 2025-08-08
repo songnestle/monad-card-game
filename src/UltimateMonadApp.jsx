@@ -388,7 +388,7 @@ const formatPrice = (price) => {
 
 // 智能合约配置
 const MONAD_CARD_GAME_CONTRACT = {
-  address: '0x1234567890123456789012345678901234567890', // 部署后的合约地址
+  address: import.meta.env.VITE_CONTRACT_ADDRESS || '0xfc69ef8D1a6461D6F562e7F83581DD4f68479333', // 使用环境变量中的真实合约地址
   abi: [
     // 提交手牌
     "function submitHand(string[] memory cardSymbols) external payable",
@@ -421,6 +421,51 @@ const getContractReadOnly = (provider) => {
     MONAD_CARD_GAME_CONTRACT.abi,
     provider
   );
+};
+
+// 合约连接健康检查
+const checkContractHealth = async (provider) => {
+  console.log('🔍 [CONTRACT] 开始合约健康检查...');
+  
+  try {
+    // 检查合约地址是否有效
+    if (!MONAD_CARD_GAME_CONTRACT.address || MONAD_CARD_GAME_CONTRACT.address.length !== 42) {
+      throw new Error('Invalid contract address format');
+    }
+    
+    // 检查是否是占位符地址
+    if (MONAD_CARD_GAME_CONTRACT.address === '0x1234567890123456789012345678901234567890') {
+      throw new Error('Contract address is still a placeholder');
+    }
+    
+    // 尝试连接到合约
+    const contract = getContractReadOnly(provider);
+    
+    // 检查合约代码是否存在
+    const code = await provider.getCode(MONAD_CARD_GAME_CONTRACT.address);
+    if (code === '0x') {
+      throw new Error('No contract code found at address');
+    }
+    
+    console.log('✅ [CONTRACT] 合约地址验证成功:', MONAD_CARD_GAME_CONTRACT.address);
+    console.log('✅ [CONTRACT] 合约代码已部署，字节码长度:', code.length);
+    
+    return {
+      success: true,
+      address: MONAD_CARD_GAME_CONTRACT.address,
+      hasCode: true,
+      codeLength: code.length
+    };
+    
+  } catch (error) {
+    console.error('❌ [CONTRACT] 合约健康检查失败:', error);
+    return {
+      success: false,
+      error: error.message,
+      address: MONAD_CARD_GAME_CONTRACT.address,
+      hasCode: false
+    };
+  }
 };
 
 // 主应用组件
@@ -587,6 +632,24 @@ const UltimateMonadApp = () => {
 
   // 钱包连接处理
   const handleWalletConnect = useCallback(async (walletData) => {
+    // 首先进行合约健康检查
+    console.log('🔍 [WALLET] 开始钱包连接和合约验证流程...');
+    const contractHealth = await checkContractHealth(walletData.provider);
+    
+    if (!contractHealth.success) {
+      setUiState(prev => ({
+        ...prev,
+        notification: {
+          type: 'error',
+          message: `⚠️ 智能合约连接失败: ${contractHealth.error}`,
+          duration: 8000
+        }
+      }));
+      console.error('❌ [WALLET] 合约健康检查失败，但继续钱包连接流程');
+    } else {
+      console.log('✅ [WALLET] 合约连接健康检查通过');
+    }
+    
     // 检查MONAD余额
     const balanceCheck = await checkMonadBalance(walletData.provider, walletData.account);
     
