@@ -55,21 +55,70 @@ function handleNightlyConflict() {
           }
         })
         
-        // 安全地替换ethereum对象
-        try {
-          Object.defineProperty(window, 'ethereum', {
-            value: proxyProvider,
-            writable: true,
-            configurable: true
-          })
-        } catch (defineError) {
-          console.warn('无法重定义window.ethereum，使用备用方案')
-          window.__preferred_ethereum = proxyProvider
+        // 使用更安全的方法设置代理
+        if (canRedefineEthereumProperty()) {
+          try {
+            Object.defineProperty(window, 'ethereum', {
+              get() { return proxyProvider },
+              set(value) { 
+                // 允许扩展更新，但保持代理功能
+                console.warn('Extension attempting to override ethereum provider')
+              },
+              configurable: true
+            })
+          } catch (error) {
+            console.warn('使用getter/setter重定义失败，回退到备用方案:', error.message)
+            setupFallbackProvider(proxyProvider)
+          }
+        } else {
+          setupFallbackProvider(proxyProvider)
         }
       }
     }, 200)
   } catch (error) {
     console.warn('处理Nightly冲突失败:', error.message)
+  }
+}
+
+// 检查是否可以安全重定义ethereum属性
+function canRedefineEthereumProperty() {
+  try {
+    const descriptor = Object.getOwnPropertyDescriptor(window, 'ethereum')
+    if (!descriptor) return true
+    
+    return descriptor.configurable !== false
+  } catch (error) {
+    return false
+  }
+}
+
+// 备用提供者设置
+function setupFallbackProvider(provider) {
+  window.__preferred_ethereum = provider
+  
+  // 创建一个更智能的访问器
+  if (!window.__ethereum_proxy_installed) {
+    const originalEthereum = window.ethereum
+    
+    // 使用Proxy包装访问
+    try {
+      // 如果可能，替换prototype方法来拦截访问
+      if (window.ethereum && typeof window.ethereum === 'object') {
+        const originalRequest = window.ethereum.request
+        window.ethereum.request = function(...args) {
+          const preferredProvider = window.__preferred_ethereum
+          if (preferredProvider && preferredProvider.request) {
+            console.log('使用首选提供者处理请求:', args[0])
+            return preferredProvider.request.apply(preferredProvider, args)
+          }
+          return originalRequest.apply(this, args)
+        }
+      }
+      
+      window.__ethereum_proxy_installed = true
+    } catch (proxyError) {
+      console.warn('无法安装请求代理:', proxyError.message)
+    }
   }
 }
 
@@ -106,6 +155,17 @@ function installGlobalErrorHandler() {
   const originalUnhandledRejection = window.onunhandledrejection
   
   window.onerror = function(message, source, lineno, colno, error) {
+    // 专门处理ethereum相关错误
+    if (message && (
+      message.includes('Cannot redefine property ethereum') ||
+      message.includes('ethereum') && message.includes('redefine')
+    )) {
+      console.warn('捕获到ethereum属性重定义错误，使用备用方案')
+      // 触发备用初始化
+      setupFallbackProvider(window.__metamask || window.__ethereum_backup)
+      return true // 阻止错误传播
+    }
+    
     // 忽略扩展相关错误
     if (source && (
       source.includes('chrome-extension://') ||
@@ -180,17 +240,33 @@ export async function initializeWalletEnvironment() {
 
 // 获取处理后的ethereum提供者
 export function getProcessedEthereumProvider() {
-  // 优先返回处理过的提供者
+  // 1. 优先使用备用提供者
   if (window.__preferred_ethereum) {
     return window.__preferred_ethereum
   }
   
-  // 返回备份的MetaMask
-  if (window.__metamask && window.ethereum?.isNightly) {
+  // 2. 处理多提供者场景
+  if (window.ethereum?.providers && Array.isArray(window.ethereum.providers)) {
+    // 优先选择MetaMask（非Nightly）
+    const metamask = window.ethereum.providers.find(p => 
+      p.isMetaMask && !p.isNightly
+    )
+    if (metamask) return metamask
+    
+    // 其次选择非Nightly提供者
+    const nonNightly = window.ethereum.providers.find(p => !p.isNightly)
+    if (nonNightly) return nonNightly
+    
+    // 最后返回第一个提供者
+    return window.ethereum.providers[0]
+  }
+  
+  // 3. 处理单一提供者，但优先使用备份
+  if (window.ethereum?.isNightly && window.__metamask) {
     return window.__metamask
   }
   
-  // 返回标准ethereum
+  // 4. 返回标准ethereum或null
   return window.ethereum || null
 }
 

@@ -2,6 +2,7 @@ import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 import UltimateMonadApp from './UltimateMonadApp.jsx'
+import { initializeWalletEnvironment } from './utils/walletInit.js'
 
 // 确保React在全局范围内可用
 if (typeof window !== 'undefined') {
@@ -15,7 +16,7 @@ console.log('🚀 [Main] Monad Card Game 启动序列开始...')
 const isDevelopment = import.meta.env.DEV
 
 // 确保DOM就绪后再启动
-const startApp = () => {
+const startApp = async () => {
   console.log('📋 [Main] DOM就绪，开始渲染应用...')
   
   const rootElement = document.getElementById('root')
@@ -25,6 +26,15 @@ const startApp = () => {
   }
 
   try {
+    // 首先初始化钱包环境
+    console.log('🔧 [Main] 初始化钱包环境...')
+    const walletResult = await initializeWalletEnvironment()
+    if (walletResult.success) {
+      console.log('✅ [Main] 钱包环境初始化成功:', walletResult)
+    } else {
+      console.warn('⚠️ [Main] 钱包环境初始化失败:', walletResult.error)
+    }
+    
     console.log('⚛️ [Main] 创建React根节点...')
     const root = createRoot(rootElement)
     

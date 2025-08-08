@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { ethers } from 'ethers';
+import { getProcessedEthereumProvider, detectWalletStatus } from '../utils/walletInit.js';
 
 // 支持的钱包配置 - 比任何竞品都全面
 const SUPPORTED_WALLETS = {
@@ -99,7 +100,13 @@ class WalletDetector {
   async detectAllWallets() {
     const detected = new Map();
     
-    if (typeof window === 'undefined' || !window.ethereum) {
+    if (typeof window === 'undefined') {
+      return detected;
+    }
+    
+    // 检查钱包状态
+    const walletStatus = detectWalletStatus();
+    if (!walletStatus.hasProvider) {
       return detected;
     }
 
@@ -129,12 +136,23 @@ class WalletDetector {
   getProviders() {
     const providers = [];
     
-    if (window.ethereum) {
-      if (window.ethereum.providers) {
+    // 使用修复后的钱包初始化逻辑
+    const processedEthereum = getProcessedEthereumProvider();
+    if (processedEthereum) {
+      if (processedEthereum.providers && Array.isArray(processedEthereum.providers)) {
         // 多钱包环境
-        providers.push(...window.ethereum.providers);
+        providers.push(...processedEthereum.providers);
       } else {
         // 单钱包环境
+        providers.push(processedEthereum);
+      }
+    }
+    
+    // 备用检查 - 如果处理过的provider不可用
+    if (providers.length === 0 && window.ethereum) {
+      if (window.ethereum.providers) {
+        providers.push(...window.ethereum.providers);
+      } else {
         providers.push(window.ethereum);
       }
     }
