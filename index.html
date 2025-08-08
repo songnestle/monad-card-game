@@ -79,15 +79,39 @@
         try {
           originalDefineProperty.call(Object, window, 'ethereum', {
             get() {
-              return protectedEthereum;
+              // 如果有保护的ethereum对象，返回它
+              if (protectedEthereum) {
+                return protectedEthereum;
+              }
+              
+              // 如果没有，尝试查找原始的ethereum对象
+              // 检查扩展提供者数组
+              if (extensionProviders.length > 0) {
+                const latestProvider = extensionProviders[extensionProviders.length - 1];
+                if (latestProvider) {
+                  protectedEthereum = createEthereumProxy(latestProvider);
+                  console.log('🔄 [PROTECTION] 延迟创建ethereum代理对象');
+                  return protectedEthereum;
+                }
+              }
+              
+              // 最后尝试直接访问可能存在的ethereum对象
+              return null;
             },
             set(value) {
-              console.log('🛡️ [PROTECTION] ethereum setter调用，安全处理...');
+              console.log('🛡️ [PROTECTION] ethereum setter调用，安全处理...', !!value);
               
-              if (value && !protectedEthereum) {
-                protectedEthereum = createEthereumProxy(value);
-                extensionProviders.push(value);
-                console.log('✅ [PROTECTION] ethereum对象安全设置完成');
+              if (value) {
+                // 总是更新扩展提供者数组
+                if (!extensionProviders.includes(value)) {
+                  extensionProviders.push(value);
+                }
+                
+                // 如果没有保护对象或者这是一个新的提供者，创建代理
+                if (!protectedEthereum || protectedEthereum !== value) {
+                  protectedEthereum = createEthereumProxy(value);
+                  console.log('✅ [PROTECTION] ethereum对象安全设置完成，提供者数量:', extensionProviders.length);
+                }
               }
               
               return true;
@@ -120,15 +144,49 @@
         const scanForWallets = () => {
           scanAttempts++;
           
-          // Check for any ethereum objects injected by extensions
-          if (window.ethereum && !protectedEthereum) {
-            protectedEthereum = createEthereumProxy(window.ethereum);
-            console.log('✅ [PROTECTION] 检测并保护钱包扩展');
+          // 主动扫描所有可能的钱包注入
+          let foundWallet = false;
+          
+          // 检查直接注入的ethereum对象
+          if (window.ethereum) {
+            if (!protectedEthereum) {
+              protectedEthereum = createEthereumProxy(window.ethereum);
+              if (!extensionProviders.includes(window.ethereum)) {
+                extensionProviders.push(window.ethereum);
+              }
+              foundWallet = true;
+              console.log('✅ [PROTECTION] 检测到主ethereum对象并已保护');
+            }
+          }
+          
+          // 检查其他常见的钱包注入点
+          ['ethereum', 'web3', 'tronWeb'].forEach(key => {
+            if (window[key] && key !== 'ethereum') {
+              console.log(`🔍 [PROTECTION] 检测到 ${key} 钱包对象`);
+            }
+          });
+          
+          // 特别处理MetaMask和其他钱包
+          if (window.ethereum?.isMetaMask) {
+            console.log('🦊 [PROTECTION] MetaMask已检测并保护');
+            foundWallet = true;
+          }
+          
+          if (window.ethereum?.isNightly) {
+            console.log('🌙 [PROTECTION] Nightly钱包已检测');
+            foundWallet = true;
+          }
+          
+          if (foundWallet && scanAttempts > 5) {
+            console.log(`🎯 [PROTECTION] 钱包扫描完成，找到 ${extensionProviders.length} 个提供者`);
+            return; // 提前结束扫描
           }
           
           // Continue scanning for a reasonable time
           if (scanAttempts < maxScans) {
-            setTimeout(scanForWallets, 50);
+            setTimeout(scanForWallets, 100); // 增加间隔以给扩展更多时间
+          } else {
+            console.log('⚠️ [PROTECTION] 钱包扫描超时，如果已安装钱包请刷新页面');
           }
         };
         
