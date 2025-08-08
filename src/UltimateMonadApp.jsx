@@ -85,15 +85,42 @@ class UltimatePriceEngine {
   }
 
   getBasePriceForCard(card) {
-    const priceRanges = {
+    // 基于真实市场价格的更准确基础价格
+    const realPrices = {
       'BTC': 45000 + Math.random() * 20000,
       'ETH': 2500 + Math.random() * 1500,
-      'rare': 100 + Math.random() * 900,
-      'uncommon': 1 + Math.random() * 99,
-      'common': 0.01 + Math.random() * 0.99
+      'USDT': 0.998 + Math.random() * 0.004,
+      'BNB': 240 + Math.random() * 60,
+      'SOL': 40 + Math.random() * 20,
+      'USDC': 0.999 + Math.random() * 0.002,
+      'XRP': 0.45 + Math.random() * 0.25,
+      'TON': 2.10 + Math.random() * 0.90,
+      'DOGE': 0.08 + Math.random() * 0.04,
+      'ADA': 0.35 + Math.random() * 0.20,
+      'AVAX': 25 + Math.random() * 15,
+      'SHIB': 0.000012 + Math.random() * 0.000008,
+      'DOT': 5.5 + Math.random() * 3.5,
+      'LINK': 12 + Math.random() * 8,
+      'TRX': 0.09 + Math.random() * 0.05,
+      'MATIC': 0.85 + Math.random() * 0.45,
+      'ICP': 8 + Math.random() * 6,
+      'UNI': 6.5 + Math.random() * 4.5,
+      'LTC': 85 + Math.random() * 35,
+      'NEAR': 2.8 + Math.random() * 1.7
     };
     
-    return priceRanges[card.symbol] || priceRanges[card.rarity] || 1;
+    // 如果有具体价格就用具体价格，否则按稀有度分类
+    if (realPrices[card.symbol]) {
+      return realPrices[card.symbol];
+    }
+    
+    const rarityPrices = {
+      'rare': 50 + Math.random() * 450,
+      'uncommon': 2 + Math.random() * 18,
+      'common': 0.1 + Math.random() * 1.9
+    };
+    
+    return rarityPrices[card.rarity] || 1;
   }
 
   async fetchRealPrices() {
@@ -144,11 +171,11 @@ class UltimatePriceEngine {
 
   getVolatility(rarity) {
     const volatilityMap = {
-      'rare': 0.02, // 2% 波动
-      'uncommon': 0.05, // 5% 波动
-      'common': 0.08 // 8% 波动
+      'rare': 0.025, // 2.5% 波动 - 大币种相对稳定
+      'uncommon': 0.065, // 6.5% 波动 - 中等币种
+      'common': 0.12 // 12% 波动 - 小币种波动更大
     };
-    return volatilityMap[rarity] || 0.03;
+    return volatilityMap[rarity] || 0.05;
   }
 
   startPriceUpdates() {
@@ -309,7 +336,9 @@ const UltimateMonadApp = () => {
     isConnected: false,
     account: null,
     balance: '0',
-    provider: null
+    monadBalance: '0',
+    provider: null,
+    hasMinimumBalance: false
   });
 
   const [playerState, setPlayerState] = useState({
@@ -355,8 +384,9 @@ const UltimateMonadApp = () => {
 
         setPlayerState(prev => ({ ...prev, cards: playerCards }));
         
-        // 生成模拟排行榜数据
-        for (let i = 0; i < 50; i++) {
+        // 生成真实数量的模拟排行榜数据
+        const playerCount = 1247 + Math.floor(Math.random() * 500); // 1247-1747人数
+        for (let i = 0; i < Math.min(playerCount, 100); i++) { // 显示前100名
           const mockAddress = `0x${Math.random().toString(16).substr(2, 40)}`;
           const mockHand = Array.from({length: 5}, () => 
             TOP_30_CRYPTO_CARDS[Math.floor(Math.random() * 30)].symbol
@@ -368,7 +398,7 @@ const UltimateMonadApp = () => {
           ...prev, 
           isInitialized: true, 
           currentPhase: 'wallet',
-          totalPlayers: 50
+          totalPlayers: playerCount
         }));
 
         // 开始游戏时间更新
@@ -403,17 +433,26 @@ const UltimateMonadApp = () => {
         timeRemaining: { hours, minutes, seconds }
       }));
 
-      // 更新玩家分数（如果手牌已锁定）
-      if (playerState.handLocked && playerState.selectedHand.length === 5) {
+      // 更新玩家分数和排名（如果手牌已锁定）
+      if (playerState.handLocked && playerState.selectedHand.length === 5 && walletState.account) {
         const score = leaderboard.calculateHandScore(playerState.selectedHand, priceEngine);
         leaderboard.updatePlayerScore(walletState.account, score);
+        const currentRank = leaderboard.getPlayerRank(walletState.account);
         
         setPlayerState(prev => ({
           ...prev,
           currentScore: score,
-          rank: leaderboard.getPlayerRank(walletState.account),
-          estimatedReward: leaderboard.getRewardForRank(leaderboard.getPlayerRank(walletState.account))
+          rank: currentRank,
+          estimatedReward: leaderboard.getRewardForRank(currentRank)
         }));
+        
+        // 更新总参与人数（模拟真实增长）
+        if (Math.random() < 0.3) { // 30%的概率增加参与人数
+          setGameState(prev => ({
+            ...prev,
+            totalPlayers: Math.min(prev.totalPlayers + Math.floor(Math.random() * 2 + 1), 2500) // 最多2500人，每次增加1-2人
+          }));
+        }
       }
 
       // 检查游戏是否结束
@@ -424,34 +463,77 @@ const UltimateMonadApp = () => {
     }, 1000);
   }, [priceEngine, leaderboard, playerState.handLocked, playerState.selectedHand, walletState.account]);
 
+  // 检查MONAD余额
+  const checkMonadBalance = useCallback(async (provider, account) => {
+    try {
+      // 获取MONAD测试网原生代币余额
+      const balance = await provider.getBalance(account);
+      const balanceInEther = ethers.formatEther(balance);
+      const monadBalance = parseFloat(balanceInEther);
+      
+      return {
+        monadBalance: balanceInEther,
+        hasMinimumBalance: monadBalance >= 0.1
+      };
+    } catch (error) {
+      console.error('获取MONAD余额失败:', error);
+      return {
+        monadBalance: '0',
+        hasMinimumBalance: false
+      };
+    }
+  }, []);
+
   // 钱包连接处理
-  const handleWalletConnect = useCallback((walletData) => {
+  const handleWalletConnect = useCallback(async (walletData) => {
+    // 检查MONAD余额
+    const balanceCheck = await checkMonadBalance(walletData.provider, walletData.account);
+    
     setWalletState({
       isConnected: true,
       account: walletData.account,
       balance: walletData.balance,
-      provider: walletData.provider
+      monadBalance: balanceCheck.monadBalance,
+      provider: walletData.provider,
+      hasMinimumBalance: balanceCheck.hasMinimumBalance
     });
     
-    setGameState(prev => ({ ...prev, currentPhase: 'selection' }));
-    
-    // 显示成功通知
-    setUiState(prev => ({
-      ...prev,
-      notification: {
-        type: 'success',
-        message: `🎉 钱包连接成功！欢迎来到终极Monad！`,
-        duration: 3000
-      }
-    }));
-  }, []);
+    // 根据余额情况决定游戏阶段
+    if (balanceCheck.hasMinimumBalance) {
+      setGameState(prev => ({ ...prev, currentPhase: 'selection' }));
+      
+      // 显示成功通知
+      setUiState(prev => ({
+        ...prev,
+        notification: {
+          type: 'success',
+          message: `🎉 钱包连接成功！欢迎来到终极Monad！`,
+          duration: 3000
+        }
+      }));
+    } else {
+      setGameState(prev => ({ ...prev, currentPhase: 'insufficient_balance' }));
+      
+      // 显示余额不足通知
+      setUiState(prev => ({
+        ...prev,
+        notification: {
+          type: 'warning',
+          message: `⚠️ 需要至少0.1 MONAD测试币才能参与游戏！当前余额: ${parseFloat(balanceCheck.monadBalance).toFixed(4)} MONAD`,
+          duration: 5000
+        }
+      }));
+    }
+  }, [checkMonadBalance]);
 
   const handleWalletDisconnect = useCallback(() => {
     setWalletState({
       isConnected: false,
       account: null,
       balance: '0',
-      provider: null
+      monadBalance: '0',
+      provider: null,
+      hasMinimumBalance: false
     });
     
     setGameState(prev => ({ ...prev, currentPhase: 'wallet' }));
@@ -513,10 +595,18 @@ const UltimateMonadApp = () => {
       // 添加到排行榜
       leaderboard.addPlayer(walletState.account, playerState.selectedHand, submissionTime);
       
+      // 立即计算初始分数
+      const initialScore = leaderboard.calculateHandScore(playerState.selectedHand, priceEngine);
+      leaderboard.updatePlayerScore(walletState.account, initialScore);
+      const initialRank = leaderboard.getPlayerRank(walletState.account);
+      
       setPlayerState(prev => ({
         ...prev,
         handLocked: true,
-        submissionTime: submissionTime
+        submissionTime: submissionTime,
+        currentScore: initialScore,
+        rank: initialRank,
+        estimatedReward: leaderboard.getRewardForRank(initialRank)
       }));
 
       setGameState(prev => ({ ...prev, currentPhase: 'playing' }));
@@ -617,6 +707,27 @@ const UltimateMonadApp = () => {
           <div style={{ fontSize: '1.8rem', fontWeight: 'bold' }}>1,000,000 Fomalhaut</div>
         </div>
         
+        {walletState.isConnected && (
+          <div style={{
+            background: 'rgba(78, 205, 196, 0.2)',
+            padding: '15px',
+            borderRadius: '15px',
+            border: '2px solid #4ECDC4'
+          }}>
+            <div style={{ color: '#4ECDC4', fontWeight: 'bold', marginBottom: '5px' }}>💰 MONAD余额</div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 'bold' }}>
+              {parseFloat(walletState.monadBalance).toFixed(4)}
+            </div>
+            <div style={{ 
+              fontSize: '0.8rem', 
+              color: walletState.hasMinimumBalance ? '#27AE60' : '#E74C3C',
+              marginTop: '3px'
+            }}>
+              {walletState.hasMinimumBalance ? '✅ 可参与' : '❌ 需要0.1+'}
+            </div>
+          </div>
+        )}
+        
         {playerState.rank > 0 && (
           <div style={{
             background: 'rgba(155, 89, 182, 0.2)',
@@ -699,6 +810,9 @@ const UltimateMonadApp = () => {
 
       case 'ended':
         return renderGameEnd();
+
+      case 'insufficient_balance':
+        return renderInsufficientBalance();
 
       default:
         return <div>Unknown game state</div>;
@@ -911,21 +1025,21 @@ const UltimateMonadApp = () => {
         }}>
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', color: '#FFD700', fontWeight: 'bold' }}>
-              {playerState.currentScore}
+              {playerState.currentScore || 0}
             </div>
             <div style={{ opacity: 0.8 }}>当前得分</div>
           </div>
           
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '2rem', color: '#9B59B6', fontWeight: 'bold' }}>
-              #{playerState.rank}
+              #{playerState.rank || '--'}
             </div>
             <div style={{ opacity: 0.8 }}>当前排名</div>
           </div>
           
           <div style={{ textAlign: 'center' }}>
             <div style={{ fontSize: '1.5rem', color: '#3498DB', fontWeight: 'bold' }}>
-              {playerState.estimatedReward.toLocaleString()}
+              {(playerState.estimatedReward || 0).toLocaleString()}
             </div>
             <div style={{ opacity: 0.8 }}>预计奖励 (Fomalhaut)</div>
           </div>
@@ -1165,6 +1279,126 @@ const UltimateMonadApp = () => {
             </div>
           );
         })}
+      </div>
+    </div>
+  );
+
+  // 余额不足界面
+  const renderInsufficientBalance = () => (
+    <div style={{ textAlign: 'center', maxWidth: '600px', margin: '0 auto' }}>
+      <div style={{
+        background: 'linear-gradient(135deg, rgba(231, 76, 60, 0.1), rgba(192, 57, 43, 0.1))',
+        padding: '40px',
+        borderRadius: '20px',
+        border: '2px solid rgba(231, 76, 60, 0.3)',
+        marginBottom: '30px'
+      }}>
+        <div style={{ fontSize: '5rem', marginBottom: '20px' }}>⚠️</div>
+        <h2 style={{ color: '#E74C3C', marginBottom: '20px' }}>需要MONAD测试币参与</h2>
+        <p style={{ marginBottom: '30px', fontSize: '1.1rem', opacity: 0.9 }}>
+          您需要至少 <strong>0.1 MONAD</strong> 测试币才能参与这个激烈的卡牌竞技！
+        </p>
+        
+        <div style={{
+          background: 'rgba(0,0,0,0.3)',
+          padding: '20px',
+          borderRadius: '15px',
+          marginBottom: '30px'
+        }}>
+          <div style={{ fontSize: '1rem', marginBottom: '10px' }}>
+            📊 当前余额: <strong>{parseFloat(walletState.monadBalance).toFixed(4)} MONAD</strong>
+          </div>
+          <div style={{ fontSize: '1rem', color: '#E74C3C' }}>
+            ❌ 需要: <strong>0.1 MONAD</strong> (最低参与要求)
+          </div>
+        </div>
+
+        <div style={{
+          display: 'flex',
+          gap: '15px',
+          justifyContent: 'center',
+          flexWrap: 'wrap'
+        }}>
+          <button
+            onClick={() => window.open('https://faucet.monad.xyz', '_blank')}
+            style={{
+              background: 'linear-gradient(45deg, #27AE60, #2ECC71)',
+              border: 'none',
+              color: 'white',
+              padding: '12px 25px',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              borderRadius: '25px',
+              cursor: 'pointer',
+              boxShadow: '0 8px 25px rgba(39, 174, 96, 0.3)'
+            }}
+          >
+            🚰 获取测试币
+          </button>
+          
+          <button
+            onClick={async () => {
+              if (walletState.provider && walletState.account) {
+                const balanceCheck = await checkMonadBalance(walletState.provider, walletState.account);
+                setWalletState(prev => ({
+                  ...prev,
+                  monadBalance: balanceCheck.monadBalance,
+                  hasMinimumBalance: balanceCheck.hasMinimumBalance
+                }));
+                
+                if (balanceCheck.hasMinimumBalance) {
+                  setGameState(prev => ({ ...prev, currentPhase: 'selection' }));
+                  setUiState(prev => ({
+                    ...prev,
+                    notification: {
+                      type: 'success',
+                      message: '🎉 余额充足！欢迎参与游戏！',
+                      duration: 3000
+                    }
+                  }));
+                } else {
+                  setUiState(prev => ({
+                    ...prev,
+                    notification: {
+                      type: 'warning',
+                      message: `余额仍然不足: ${parseFloat(balanceCheck.monadBalance).toFixed(4)} MONAD`,
+                      duration: 3000
+                    }
+                  }));
+                }
+              }
+            }}
+            style={{
+              background: 'linear-gradient(45deg, #3498DB, #2980B9)',
+              border: 'none',
+              color: 'white',
+              padding: '12px 25px',
+              fontSize: '1rem',
+              fontWeight: 'bold',
+              borderRadius: '25px',
+              cursor: 'pointer',
+              boxShadow: '0 8px 25px rgba(52, 152, 219, 0.3)'
+            }}
+          >
+            🔄 刷新余额
+          </button>
+        </div>
+      </div>
+      
+      <div style={{
+        background: 'rgba(52, 152, 219, 0.1)',
+        padding: '20px',
+        borderRadius: '15px',
+        border: '1px solid rgba(52, 152, 219, 0.3)',
+        fontSize: '0.9rem'
+      }}>
+        <h4 style={{ color: '#3498DB', marginBottom: '15px' }}>💡 如何获取MONAD测试币？</h4>
+        <div style={{ textAlign: 'left', display: 'grid', gap: '8px' }}>
+          <div>1. 📋 复制您的钱包地址: <code style={{background: 'rgba(0,0,0,0.3)', padding: '2px 6px', borderRadius: '4px'}}>{walletState.account}</code></div>
+          <div>2. 🚰 访问MONAD官方水龙头获取测试币</div>
+          <div>3. ⏰ 等待1-2分钟后点击"刷新余额"</div>
+          <div>4. 🎮 余额充足后即可开始游戏！</div>
+        </div>
       </div>
     </div>
   );
