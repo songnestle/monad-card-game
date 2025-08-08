@@ -386,6 +386,43 @@ const formatPrice = (price) => {
   return `$${price.toFixed(6)}`;                         // <$0.01: 6位小数
 };
 
+// 智能合约配置
+const MONAD_CARD_GAME_CONTRACT = {
+  address: '0x1234567890123456789012345678901234567890', // 部署后的合约地址
+  abi: [
+    // 提交手牌
+    "function submitHand(string[] memory cardSymbols) external payable",
+    // 查询玩家手牌
+    "function getPlayerHand(address player) external view returns (string[] memory, uint256, bool)",
+    // 查询是否可以重新选择
+    "function canReselect(address player) external view returns (bool)",
+    // 查询下次解锁时间
+    "function getUnlockTime(address player) external view returns (uint256)",
+    // 查询玩家分数
+    "function getPlayerScore(address player) external view returns (uint256)",
+    // 事件
+    "event HandSubmitted(address indexed player, string[] cardSymbols, uint256 timestamp)",
+    "event ScoreUpdated(address indexed player, uint256 newScore)"
+  ]
+};
+
+// 合约交互函数
+const createContract = (provider) => {
+  return new ethers.Contract(
+    MONAD_CARD_GAME_CONTRACT.address,
+    MONAD_CARD_GAME_CONTRACT.abi,
+    provider.getSigner()
+  );
+};
+
+const getContractReadOnly = (provider) => {
+  return new ethers.Contract(
+    MONAD_CARD_GAME_CONTRACT.address,
+    MONAD_CARD_GAME_CONTRACT.abi,
+    provider
+  );
+};
+
 // 主应用组件
 const UltimateMonadApp = () => {
   // 核心状态管理
@@ -562,19 +599,78 @@ const UltimateMonadApp = () => {
       hasMinimumBalance: balanceCheck.hasMinimumBalance
     });
     
-    // 根据余额情况决定游戏阶段
     if (balanceCheck.hasMinimumBalance) {
-      setGameState(prev => ({ ...prev, currentPhase: 'selection' }));
-      
-      // 显示成功通知
-      setUiState(prev => ({
-        ...prev,
-        notification: {
-          type: 'success',
-          message: `🎉 钱包连接成功！欢迎来到终极Monad！`,
-          duration: 3000
+      try {
+        // 从智能合约读取玩家状态
+        const contract = getContractReadOnly(walletData.provider);
+        
+        // 查询玩家手牌和状态
+        const [handSymbols, submissionTime, isLocked] = await contract.getPlayerHand(walletData.account);
+        const canReselect = await contract.canReselect(walletData.account);
+        
+        if (isLocked && !canReselect) {
+          // 玩家已有锁定的手牌，恢复状态
+          const unlockTime = await contract.getUnlockTime(walletData.account);
+          const currentScore = await contract.getPlayerScore(walletData.account);
+          
+          setPlayerState(prev => ({
+            ...prev,
+            selectedHand: handSymbols,
+            handLocked: true,
+            submissionTime: submissionTime.toNumber() * 1000, // 转换为毫秒
+            currentScore: currentScore.toNumber(),
+            rank: 0, // 需要从排行榜计算
+            estimatedReward: 0 // 需要从排行榜计算
+          }));
+          
+          setGameState(prev => ({ ...prev, currentPhase: 'playing' }));
+          
+          const hoursLeft = Math.ceil((unlockTime.toNumber() * 1000 - Date.now()) / (1000 * 60 * 60));
+          setUiState(prev => ({
+            ...prev,
+            notification: {
+              type: 'success',
+              message: `🔒 手牌已在区块链上锁定！还有${hoursLeft}小时可以重新选择`,
+              duration: 4000
+            }
+          }));
+        } else {
+          // 可以选择新手牌
+          setGameState(prev => ({ ...prev, currentPhase: 'selection' }));
+          
+          if (isLocked && canReselect) {
+            setUiState(prev => ({
+              ...prev,
+              notification: {
+                type: 'info',
+                message: '🆕 24小时已过，可以重新选择手牌！',
+                duration: 3000
+              }
+            }));
+          } else {
+            setUiState(prev => ({
+              ...prev,
+              notification: {
+                type: 'success',
+                message: `🎉 钱包连接成功！欢迎来到终极Monad！`,
+                duration: 3000
+              }
+            }));
+          }
         }
-      }));
+      } catch (error) {
+        console.error('读取合约状态失败:', error);
+        // 如果合约交互失败，回退到选择模式
+        setGameState(prev => ({ ...prev, currentPhase: 'selection' }));
+        setUiState(prev => ({
+          ...prev,
+          notification: {
+            type: 'warning',
+            message: '⚠️ 无法连接到游戏合约，请检查网络连接',
+            duration: 4000
+          }
+        }));
+      }
     } else {
       setGameState(prev => ({ ...prev, currentPhase: 'insufficient_balance' }));
       
@@ -651,9 +747,35 @@ const UltimateMonadApp = () => {
     setUiState(prev => ({ ...prev, loading: true }));
 
     try {
-      // 模拟区块链交易
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      // 创建合约实例
+      const contract = createContract(walletState.provider);
+      
+      setUiState(prev => ({
+        ...prev,
+        notification: {
+          type: 'info',
+          message: '📝 正在提交手牌到区块链...',
+          duration: 2000
+        }
+      }));
 
+      // 提交手牌到智能合约
+      const tx = await contract.submitHand(playerState.selectedHand, {
+        value: ethers.parseEther("0.01") // 需要0.01 ETH作为参与费
+      });
+      
+      setUiState(prev => ({
+        ...prev,
+        notification: {
+          type: 'info',
+          message: '⛓️ 交易已发送，等待区块确认...',
+          duration: 3000
+        }
+      }));
+
+      // 等待交易确认
+      const receipt = await tx.wait();
+      
       const submissionTime = Date.now();
       
       // 添加到排行榜
@@ -680,19 +802,34 @@ const UltimateMonadApp = () => {
         loading: false,
         notification: {
           type: 'success',
-          message: '🃏 手牌提交成功！开始实时计分...',
-          duration: 3000
+          message: `🔒 手牌已永久保存到区块链！交易哈希: ${receipt.hash.slice(0,10)}...`,
+          duration: 5000
         }
       }));
 
     } catch (error) {
+      console.error('提交手牌失败:', error);
+      
+      let errorMessage = '手牌提交失败';
+      if (error.message.includes('insufficient funds')) {
+        errorMessage = '余额不足，需要至少0.01 MONAD作为参与费';
+      } else if (error.message.includes('user rejected')) {
+        errorMessage = '用户取消了交易';
+      } else if (error.message.includes('already submitted')) {
+        errorMessage = '您今天已经提交过手牌';
+      }
+      
       setUiState(prev => ({
         ...prev,
         loading: false,
-        error: '手牌提交失败: ' + error.message
+        notification: {
+          type: 'error',
+          message: errorMessage,
+          duration: 4000
+        }
       }));
     }
-  }, [playerState.selectedHand, walletState.account, leaderboard]);
+  }, [playerState.selectedHand, walletState.account, walletState.provider, leaderboard, priceEngine]);
 
   // 通知系统
   useEffect(() => {
