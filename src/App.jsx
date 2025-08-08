@@ -1,6 +1,32 @@
 import { useState, useEffect, useCallback } from 'react'
 import { ethers } from 'ethers'
 import './App.css'
+import BullrunApp from './BullrunApp.jsx'
+
+// 环境检测组件
+function AppVersionSelector() {
+  const [selectedVersion, setSelectedVersion] = useState('bullrun')
+  const [showVersionSelector, setShowVersionSelector] = useState(false)
+
+  // 检查URL参数来决定显示哪个版本
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search)
+    const version = urlParams.get('version')
+    if (version === 'original') {
+      setSelectedVersion('original')
+    }
+  }, [])
+
+  if (selectedVersion === 'bullrun') {
+    return <BullrunApp />
+  }
+
+  // 原版游戏逻辑保持不变
+  return <OriginalMonadApp />
+}
+
+// 原版Monad卡牌应用
+function OriginalMonadApp() {
 
 // 内联加密货币卡牌数据
 const cryptoCards = [
@@ -1016,4 +1042,4 @@ function App() {
   )
 }
 
-export default App
+export default AppVersionSelector

@@ -9,7 +9,9 @@
  */
 
 import React from 'react'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
+import { ethers } from 'ethers'
+import WalletConnector from './components/WalletConnector.jsx'
 
 // 内联样式避免CSS依赖
 const styles = {

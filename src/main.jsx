@@ -1,7 +1,7 @@
 import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import StableGameApp from './StableGameApp.jsx'
+import UltimateMonadApp from './UltimateMonadApp.jsx'
 
 // 确保React在全局范围内可用
 if (typeof window !== 'undefined') {
@@ -28,10 +28,10 @@ const startApp = () => {
     console.log('⚛️ [Main] 创建React根节点...')
     const root = createRoot(rootElement)
     
-    console.log('🛡️ [Main] 渲染StableGameApp（稳定游戏版本）...')
+    console.log('🏆 [Main] 渲染UltimateMonadApp（终极Monad版本）...')
     root.render(
       <StrictMode>
-        <StableGameApp />
+        <UltimateMonadApp />
       </StrictMode>
     )
     
