@@ -414,6 +414,11 @@ const createContract = async (provider, account) => {
     throw new Error('合约未在该地址部署');
   }
   
+  // 临时检查：如果是有问题的合约，抛出错误
+  if (code.startsWith('0xf3fe')) {
+    throw new Error('合约部署异常，请等待修复或使用新地址');
+  }
+  
   // 在ethers v6中，getSigner需要传入账户地址
   const signer = await provider.getSigner(account);
   return new ethers.Contract(
