@@ -392,17 +392,13 @@ const MONAD_CARD_GAME_CONTRACT = {
   abi: [
     // 提交手牌
     "function submitHand(string[] memory cardSymbols) external payable",
-    // 查询玩家手牌
-    "function getPlayerHand(address player) external view returns (string[] memory, uint256, bool)",
-    // 查询是否可以重新选择
-    "function canReselect(address player) external view returns (bool)",
-    // 查询下次解锁时间
-    "function getUnlockTime(address player) external view returns (uint256)",
-    // 查询玩家分数
-    "function getPlayerScore(address player) external view returns (uint256)",
+    // 查询玩家手牌 - 修正返回类型
+    "function getPlayerHand(address player) external view returns (string memory cards, uint256 submissionTime, bool isLocked, uint256 balance, uint256 unlockTime, uint256 currentTime)",
+    // 常量
+    "function ENTRY_FEE() external view returns (uint256)",
+    "function owner() external view returns (address)",
     // 事件
-    "event HandSubmitted(address indexed player, string[] cardSymbols, uint256 timestamp)",
-    "event ScoreUpdated(address indexed player, uint256 newScore)"
+    "event HandSubmitted(address indexed player, uint256 value, uint256 timestamp)"
   ]
 };
 
@@ -680,13 +676,20 @@ const UltimateMonadApp = () => {
         const contract = getContractReadOnly(walletData.provider);
         
         // 查询玩家手牌和状态
-        const [handSymbols, submissionTime, isLocked] = await contract.getPlayerHand(walletData.account);
-        const canReselect = await contract.canReselect(walletData.account);
+        const playerHand = await contract.getPlayerHand(walletData.account);
+        const cards = playerHand[0]; // string of comma-separated cards
+        const submissionTime = playerHand[1];
+        const isLocked = playerHand[2];
+        const balance = playerHand[3];
+        const unlockTime = playerHand[4];
+        const currentTime = playerHand[5];
         
-        if (isLocked && !canReselect) {
+        // 将逗号分隔的卡牌字符串转换为数组
+        const handSymbols = cards ? cards.split(',').filter(c => c) : [];
+        
+        if (isLocked && handSymbols.length > 0) {
           // 玩家已有锁定的手牌，恢复状态
-          const unlockTime = await contract.getUnlockTime(walletData.account);
-          const currentScore = await contract.getPlayerScore(walletData.account);
+          const currentScore = 0; // 合约中没有分数系统
           
           setPlayerState(prev => ({
             ...prev,
@@ -921,9 +924,17 @@ const UltimateMonadApp = () => {
       } else if (errorDetails.includes('network') || error.code === 'NETWORK_ERROR') {
         errorMessage = '网络连接失败，请检查RPC连接';
       } else if (errorDetails.includes('contract') || error.code === 'CALL_EXCEPTION') {
-        errorMessage = '合约调用失败，请确认合约已部署';
+        if (errorDetails.includes('missing revert data')) {
+          errorMessage = '合约执行失败：当前合约地址可能无效或合约未正确部署。请联系管理员。';
+        } else if (errorDetails.includes('execution reverted')) {
+          errorMessage = '合约拒绝了交易：可能是参数错误或合约状态问题';
+        } else {
+          errorMessage = '合约调用失败，请确认合约已部署并且地址正确';
+        }
       } else if (errorDetails.includes('gas')) {
         errorMessage = 'Gas费用估算失败，请稍后再试';
+      } else if (errorDetails.includes('require(false)')) {
+        errorMessage = '合约初始化失败：当前部署的合约存在问题，请等待修复';
       } else {
         // 显示更详细的错误信息
         errorMessage = `交易失败: ${errorDetails.substring(0, 100)}...`;
