@@ -406,12 +406,24 @@ const MONAD_CARD_GAME_CONTRACT = {
   ]
 };
 
-// 合约交互函数
-const createContract = (provider) => {
+// 合约交互函数 - 修复ethers v6的signer问题
+const createContract = async (provider, account) => {
+  if (!provider || !account) {
+    throw new Error('Provider或账户地址未提供');
+  }
+  
+  // 检查合约是否已部署
+  const code = await provider.getCode(MONAD_CARD_GAME_CONTRACT.address);
+  if (code === '0x' || code === '0x0') {
+    throw new Error('合约未在该地址部署');
+  }
+  
+  // 在ethers v6中，getSigner需要传入账户地址
+  const signer = await provider.getSigner(account);
   return new ethers.Contract(
     MONAD_CARD_GAME_CONTRACT.address,
     MONAD_CARD_GAME_CONTRACT.abi,
-    provider.getSigner()
+    signer
   );
 };
 
@@ -810,8 +822,8 @@ const UltimateMonadApp = () => {
     setUiState(prev => ({ ...prev, loading: true }));
 
     try {
-      // 创建合约实例
-      const contract = createContract(walletState.provider);
+      // 创建带signer的合约实例
+      const contract = await createContract(walletState.provider, walletState.account);
       
       setUiState(prev => ({
         ...prev,
@@ -825,17 +837,21 @@ const UltimateMonadApp = () => {
       // 先进行静态调用测试
       console.log('🔍 [CONTRACT] 测试合约调用...');
       console.log('  选中的卡牌:', playerState.selectedHand);
-      console.log('  参与费:', '0.001 MONAD');
+      console.log('  参与费:', '0.01 MONAD');
+      console.log('  合约地址:', MONAD_CARD_GAME_CONTRACT.address);
+      console.log('  用户账户:', walletState.account);
       
       try {
-        // 尝试静态调用（不消耗gas）
+        // 尝试静态调用（不消耗gas）- ethers v6不需要from参数
         await contract.submitHand.staticCall(playerState.selectedHand, {
-          value: ethers.parseEther("0.01"), // 修正为正确的参与费: 0.01 ETH
-          from: walletState.account
+          value: ethers.parseEther("0.01") // 修正为正确的参与费: 0.01 ETH
         });
         console.log('✅ [CONTRACT] 静态调用成功，准备发送交易');
       } catch (staticError) {
         console.error('❌ [CONTRACT] 静态调用失败:', staticError);
+        if (staticError.code === 'UNSUPPORTED_OPERATION') {
+          throw new Error('合约方法不存在或signer配置错误');
+        }
         throw new Error(`合约验证失败: ${staticError.message}`);
       }
       
@@ -895,7 +911,9 @@ const UltimateMonadApp = () => {
       
       // 更详细的错误处理
       if (error.code === 'INSUFFICIENT_FUNDS' || errorDetails.includes('insufficient funds')) {
-        errorMessage = '余额不足，需要至少0.001 MONAD作为参与费';
+        errorMessage = '余额不足，需要至少0.01 MONAD作为参与费';
+      } else if (error.code === 'UNSUPPORTED_OPERATION') {
+        errorMessage = 'Signer未连接或ABI方法不存在，请检查钱包连接';
       } else if (error.code === 'ACTION_REJECTED' || errorDetails.includes('user rejected')) {
         errorMessage = '用户取消了交易';
       } else if (errorDetails.includes('already submitted')) {
