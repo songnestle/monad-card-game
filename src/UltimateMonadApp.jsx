@@ -619,7 +619,7 @@ const UltimateMonadApp = () => {
       
       return {
         monadBalance: balanceInEther,
-        hasMinimumBalance: monadBalance >= 0.1
+        hasMinimumBalance: monadBalance >= 0.001 // 降低到0.001 MONAD最低要求
       };
     } catch (error) {
       console.error('获取MONAD余额失败:', error);
@@ -742,7 +742,7 @@ const UltimateMonadApp = () => {
         ...prev,
         notification: {
           type: 'warning',
-          message: `⚠️ 需要至少0.1 MONAD测试币才能参与游戏！当前余额: ${parseFloat(balanceCheck.monadBalance).toFixed(4)} MONAD`,
+          message: `⚠️ 需要至少0.001 MONAD测试币才能参与游戏！当前余额: ${parseFloat(balanceCheck.monadBalance).toFixed(4)} MONAD`,
           duration: 5000
         }
       }));
@@ -824,7 +824,7 @@ const UltimateMonadApp = () => {
 
       // 提交手牌到智能合约
       const tx = await contract.submitHand(playerState.selectedHand, {
-        value: ethers.parseEther("0.01") // 需要0.01 ETH作为参与费
+        value: ethers.parseEther("0.001") // 降低参与费到0.001 MONAD
       });
       
       setUiState(prev => ({
@@ -874,12 +874,24 @@ const UltimateMonadApp = () => {
       console.error('提交手牌失败:', error);
       
       let errorMessage = '手牌提交失败';
-      if (error.message.includes('insufficient funds')) {
-        errorMessage = '余额不足，需要至少0.01 MONAD作为参与费';
-      } else if (error.message.includes('user rejected')) {
+      let errorDetails = error.message || '';
+      
+      // 更详细的错误处理
+      if (error.code === 'INSUFFICIENT_FUNDS' || errorDetails.includes('insufficient funds')) {
+        errorMessage = '余额不足，需要至少0.001 MONAD作为参与费';
+      } else if (error.code === 'ACTION_REJECTED' || errorDetails.includes('user rejected')) {
         errorMessage = '用户取消了交易';
-      } else if (error.message.includes('already submitted')) {
+      } else if (errorDetails.includes('already submitted')) {
         errorMessage = '您今天已经提交过手牌';
+      } else if (errorDetails.includes('network') || error.code === 'NETWORK_ERROR') {
+        errorMessage = '网络连接失败，请检查RPC连接';
+      } else if (errorDetails.includes('contract') || error.code === 'CALL_EXCEPTION') {
+        errorMessage = '合约调用失败，请确认合约已部署';
+      } else if (errorDetails.includes('gas')) {
+        errorMessage = 'Gas费用估算失败，请稍后再试';
+      } else {
+        // 显示更详细的错误信息
+        errorMessage = `交易失败: ${errorDetails.substring(0, 100)}...`;
       }
       
       setUiState(prev => ({
@@ -888,7 +900,7 @@ const UltimateMonadApp = () => {
         notification: {
           type: 'error',
           message: errorMessage,
-          duration: 4000
+          duration: 6000
         }
       }));
     }
@@ -987,7 +999,7 @@ const UltimateMonadApp = () => {
               color: walletState.hasMinimumBalance ? '#27AE60' : '#E74C3C',
               marginTop: '3px'
             }}>
-              {walletState.hasMinimumBalance ? '✅ 可参与' : '❌ 需要0.1+'}
+              {walletState.hasMinimumBalance ? '✅ 可参与' : '❌ 需要0.001+'}
             </div>
           </div>
         )}
