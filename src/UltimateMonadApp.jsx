@@ -388,7 +388,7 @@ const formatPrice = (price) => {
 
 // 智能合约配置
 const MONAD_CARD_GAME_CONTRACT = {
-  address: import.meta.env.VITE_CONTRACT_ADDRESS || '0x7466e8F15448e5D9D68868FBbeaa846B9fBbF030', // 新部署的MonadCardGame合约地址
+  address: import.meta.env.VITE_CONTRACT_ADDRESS || '0x0000000000000000000000000000000000000000', // 临时禁用合约
   abi: [
     // 提交手牌
     "function submitHand(string[] memory cardSymbols) external payable",
