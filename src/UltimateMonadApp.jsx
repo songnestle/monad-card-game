@@ -822,6 +822,23 @@ const UltimateMonadApp = () => {
         }
       }));
 
+      // 先进行静态调用测试
+      console.log('🔍 [CONTRACT] 测试合约调用...');
+      console.log('  选中的卡牌:', playerState.selectedHand);
+      console.log('  参与费:', '0.001 MONAD');
+      
+      try {
+        // 尝试静态调用（不消耗gas）
+        await contract.submitHand.staticCall(playerState.selectedHand, {
+          value: ethers.parseEther("0.001"),
+          from: walletState.account
+        });
+        console.log('✅ [CONTRACT] 静态调用成功，准备发送交易');
+      } catch (staticError) {
+        console.error('❌ [CONTRACT] 静态调用失败:', staticError);
+        throw new Error(`合约验证失败: ${staticError.message}`);
+      }
+      
       // 提交手牌到智能合约
       const tx = await contract.submitHand(playerState.selectedHand, {
         value: ethers.parseEther("0.001") // 降低参与费到0.001 MONAD
@@ -916,6 +933,38 @@ const UltimateMonadApp = () => {
       return () => clearTimeout(timer);
     }
   }, [uiState.notification]);
+
+  // 渲染合约信息
+  const renderContractInfo = () => (
+    <div style={{
+      position: 'fixed',
+      bottom: '20px',
+      right: '20px',
+      background: 'rgba(30, 30, 40, 0.95)',
+      padding: '15px',
+      borderRadius: '10px',
+      border: '1px solid rgba(255, 255, 255, 0.1)',
+      fontSize: '12px',
+      maxWidth: '300px',
+      zIndex: 1000
+    }}>
+      <div style={{ fontWeight: 'bold', marginBottom: '10px', color: '#4ECDC4' }}>
+        🔗 合约信息
+      </div>
+      <div style={{ color: '#aaa', marginBottom: '5px' }}>
+        地址: {MONAD_CARD_GAME_CONTRACT.address.slice(0, 6)}...{MONAD_CARD_GAME_CONTRACT.address.slice(-4)}
+      </div>
+      <div style={{ color: '#aaa', marginBottom: '5px' }}>
+        网络: Monad Testnet (Chain ID: 10143)
+      </div>
+      <div style={{ color: '#aaa', marginBottom: '5px' }}>
+        参与费: 0.001 MONAD
+      </div>
+      <div style={{ color: '#aaa' }}>
+        RPC: {walletState.provider ? '已连接' : '未连接'}
+      </div>
+    </div>
+  );
 
   // 渲染游戏头部
   const renderGameHeader = () => (
@@ -1777,6 +1826,9 @@ const UltimateMonadApp = () => {
         
         {/* 主要游戏内容 */}
         {renderGameContent()}
+        
+        {/* 合约信息显示 */}
+        {gameState.isInitialized && renderContractInfo()}
       </div>
 
       {/* CSS动画 */}
