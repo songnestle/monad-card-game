@@ -830,7 +830,7 @@ const UltimateMonadApp = () => {
       try {
         // 尝试静态调用（不消耗gas）
         await contract.submitHand.staticCall(playerState.selectedHand, {
-          value: ethers.parseEther("0.001"),
+          value: ethers.parseEther("0.01"), // 修正为正确的参与费: 0.01 ETH
           from: walletState.account
         });
         console.log('✅ [CONTRACT] 静态调用成功，准备发送交易');
@@ -841,7 +841,7 @@ const UltimateMonadApp = () => {
       
       // 提交手牌到智能合约
       const tx = await contract.submitHand(playerState.selectedHand, {
-        value: ethers.parseEther("0.001") // 降低参与费到0.001 MONAD
+        value: ethers.parseEther("0.01") // 正确的参与费: 0.01 MONAD
       });
       
       setUiState(prev => ({
@@ -958,7 +958,7 @@ const UltimateMonadApp = () => {
         网络: Monad Testnet (Chain ID: 10143)
       </div>
       <div style={{ color: '#aaa', marginBottom: '5px' }}>
-        参与费: 0.001 MONAD
+        参与费: 0.01 MONAD
       </div>
       <div style={{ color: '#aaa' }}>
         RPC: {walletState.provider ? '已连接' : '未连接'}
