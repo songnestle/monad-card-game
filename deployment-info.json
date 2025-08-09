@@ -1,0 +1,10 @@
+{
+  "contractAddress": "0x7466e8F15448e5D9D68868FBbeaa846B9fBbF030",
+  "deployer": "0xe778DC69e5837fdD9022212DA01B23e89Ae37067",
+  "network": "Monad Testnet",
+  "chainId": 10143,
+  "timestamp": "2025-08-09T10:15:00.000Z",
+  "transactionHash": "0x86c7d6b5b37b9f3768762718179b4f91839ef38613c3bccdfdcb497ccf10dd62",
+  "entryFee": "0.01 ETH",
+  "status": "deployed_successfully"
+}
