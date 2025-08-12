@@ -1,7 +1,7 @@
 import React, { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
-import UltimateMonadApp from './UltimateMonadApp.jsx'
+import MonadOptimizedApp from './MonadOptimizedApp.jsx'
 import { initializeWalletEnvironment } from './utils/walletInit.js'
 
 // 确保React在全局范围内可用
@@ -38,10 +38,10 @@ const startApp = async () => {
     console.log('⚛️ [Main] 创建React根节点...')
     const root = createRoot(rootElement)
     
-    console.log('🏆 [Main] 渲染UltimateMonadApp（终极Monad版本）...')
+    console.log('🏆 [Main] 渲染MonadOptimizedApp（优化版Monad）...')
     root.render(
       <StrictMode>
-        <UltimateMonadApp />
+        <MonadOptimizedApp />
       </StrictMode>
     )
     
