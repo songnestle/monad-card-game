@@ -1099,6 +1099,69 @@ const UltimateMonadApp = () => {
           </div>
         )}
       </div>
+      
+      {/* 架构图按钮 */}
+      <div style={{ marginTop: '20px', display: 'flex', justifyContent: 'center', gap: '15px' }}>
+        <button
+          onClick={() => window.open('/architecture.html', '_blank')}
+          style={{
+            background: 'linear-gradient(135deg, #667eea, #764ba2)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 25px',
+            borderRadius: '25px',
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 15px rgba(102, 126, 234, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.boxShadow = '0 6px 20px rgba(102, 126, 234, 0.6)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = '0 4px 15px rgba(102, 126, 234, 0.4)';
+          }}
+        >
+          <span>🏗️</span>
+          <span>游戏架构图</span>
+        </button>
+        
+        <button
+          onClick={() => window.open('https://github.com/songnestle/monad-card-game', '_blank')}
+          style={{
+            background: 'linear-gradient(135deg, #24292e, #040d21)',
+            color: 'white',
+            border: 'none',
+            padding: '12px 25px',
+            borderRadius: '25px',
+            fontSize: '1rem',
+            fontWeight: 'bold',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 15px rgba(0, 0, 0, 0.4)',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px'
+          }}
+          onMouseEnter={(e) => {
+            e.target.style.transform = 'translateY(-2px)';
+            e.target.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.6)';
+          }}
+          onMouseLeave={(e) => {
+            e.target.style.transform = 'translateY(0)';
+            e.target.style.boxShadow = '0 4px 15px rgba(0, 0, 0, 0.4)';
+          }}
+        >
+          <span>📦</span>
+          <span>GitHub</span>
+        </button>
+      </div>
     </div>
   );
 

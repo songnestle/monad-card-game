@@ -1,0 +1,1090 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>交互式架构流程图 - React Flow 11</title>
+    
+    <!-- React 和 React DOM -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- React Flow 11 -->
+    <script src="https://unpkg.com/reactflow@11.11.3/dist/umd/index.js"></script>
+    <link href="https://unpkg.com/reactflow@11.11.3/dist/style.css" rel="stylesheet">
+    
+    <!-- Babel Standalone -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            overflow: hidden;
+        }
+        
+        #root {
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        /* 去掉默认灰色背景 */
+        .react-flow__node {
+            background: transparent !important;
+        }
+        
+        /* 自定义节点样式 */
+        .custom-node {
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 15px;
+            min-width: 180px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            border: 2px solid transparent;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .custom-node:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+        }
+        
+        .custom-node.processing {
+            border-color: #4299e1;
+            animation: pulse 2s infinite;
+        }
+        
+        .custom-node.completed {
+            border-color: #48bb78;
+        }
+        
+        .custom-node.error {
+            border-color: #f56565;
+        }
+        
+        @keyframes pulse {
+            0% {
+                box-shadow: 0 0 0 0 rgba(66, 153, 225, 0.7);
+            }
+            70% {
+                box-shadow: 0 0 0 10px rgba(66, 153, 225, 0);
+            }
+            100% {
+                box-shadow: 0 0 0 0 rgba(66, 153, 225, 0);
+            }
+        }
+        
+        .node-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            font-weight: 600;
+            font-size: 14px;
+        }
+        
+        .node-icon {
+            width: 24px;
+            height: 24px;
+            margin-right: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            font-size: 14px;
+        }
+        
+        .node-content {
+            font-size: 12px;
+            color: #4a5568;
+            margin-bottom: 10px;
+        }
+        
+        .node-metrics {
+            display: flex;
+            gap: 10px;
+            font-size: 11px;
+            color: #718096;
+        }
+        
+        .metric {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .progress-bar {
+            width: 100%;
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 2px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #4299e1, #667eea);
+            transition: width 0.3s ease;
+        }
+        
+        /* 控制面板 */
+        .control-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            min-width: 280px;
+            transition: all 0.3s ease;
+        }
+        
+        .control-panel.collapsed {
+            padding: 15px;
+            min-width: auto;
+        }
+        
+        .panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .panel-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .collapse-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 18px;
+            color: #718096;
+            transition: transform 0.3s ease;
+        }
+        
+        .collapse-btn:hover {
+            color: #4a5568;
+        }
+        
+        .collapsed .collapse-btn {
+            transform: rotate(180deg);
+        }
+        
+        .panel-content {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        
+        .collapsed .panel-content {
+            display: none;
+        }
+        
+        .control-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .control-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: #4a5568;
+        }
+        
+        .control-buttons {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .control-btn {
+            flex: 1;
+            padding: 8px 12px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .control-btn:hover {
+            background: #5a67d8;
+            transform: translateY(-1px);
+        }
+        
+        .control-btn:active {
+            transform: translateY(0);
+        }
+        
+        .control-btn.secondary {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .control-btn.secondary:hover {
+            background: #cbd5e0;
+        }
+        
+        /* 浮动操作按钮 */
+        .fab-container {
+            position: absolute;
+            bottom: 30px;
+            right: 30px;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            z-index: 1000;
+        }
+        
+        .fab {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #667eea;
+            color: white;
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+            transition: all 0.3s ease;
+        }
+        
+        .fab:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
+        }
+        
+        /* 右键菜单 */
+        .context-menu {
+            position: absolute;
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 8px;
+            padding: 8px 0;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
+            z-index: 2000;
+            min-width: 180px;
+        }
+        
+        .context-menu-item {
+            padding: 10px 20px;
+            font-size: 13px;
+            color: #2d3748;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .context-menu-item:hover {
+            background: #f7fafc;
+            color: #667eea;
+        }
+        
+        /* 编辑对话框 */
+        .edit-dialog {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(255, 255, 255, 0.98);
+            backdrop-filter: blur(10px);
+            border-radius: 12px;
+            padding: 25px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+            z-index: 3000;
+            min-width: 350px;
+        }
+        
+        .edit-dialog h3 {
+            margin-bottom: 20px;
+            color: #2d3748;
+        }
+        
+        .edit-input {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+        
+        .edit-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .edit-actions {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        /* 提示信息 */
+        .tooltip {
+            position: absolute;
+            bottom: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(45, 55, 72, 0.9);
+            color: white;
+            padding: 12px 20px;
+            border-radius: 8px;
+            font-size: 13px;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .tooltip.visible {
+            opacity: 1;
+        }
+        
+        /* 动画边样式 */
+        .animated-edge {
+            stroke-dasharray: 5;
+            animation: dash 1s linear infinite;
+        }
+        
+        @keyframes dash {
+            to {
+                stroke-dashoffset: -10;
+            }
+        }
+        
+        /* 加载动画 */
+        .loading-spinner {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40px;
+            height: 40px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: translate(-50%, -50%) rotate(0deg); }
+            100% { transform: translate(-50%, -50%) rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    
+    <script type="text/babel">
+        const { useState, useEffect, useCallback, useRef, useMemo } = React;
+        const ReactFlowComponent = window.ReactFlow.default || window.ReactFlow.ReactFlow;
+        const { 
+            useNodesState, 
+            useEdgesState, 
+            useReactFlow,
+            Controls,
+            MiniMap,
+            Background,
+            Handle,
+            Position,
+            MarkerType,
+            getBezierPath,
+            getEdgeCenter
+        } = window.ReactFlow;
+
+        // 节点类型定义
+        const nodeTypes = {
+            input: 'input',
+            process: 'process',
+            ai: 'ai',
+            output: 'output',
+            group: 'group'
+        };
+
+        // 节点图标
+        const nodeIcons = {
+            input: '📥',
+            process: '⚙️',
+            ai: '🤖',
+            output: '📤',
+            group: '📁'
+        };
+
+        // 节点颜色
+        const nodeColors = {
+            input: '#48bb78',
+            process: '#4299e1',
+            ai: '#9f7aea',
+            output: '#ed8936',
+            group: '#718096'
+        };
+
+        // 自定义节点组件
+        const CustomNode = ({ data, selected }) => {
+            const [progress, setProgress] = useState(data.progress || 0);
+            
+            useEffect(() => {
+                if (data.status === 'processing') {
+                    const interval = setInterval(() => {
+                        setProgress(prev => {
+                            const next = prev + Math.random() * 10;
+                            return next > 100 ? 0 : next;
+                        });
+                    }, 500);
+                    return () => clearInterval(interval);
+                }
+            }, [data.status]);
+
+            const zoomLevel = useReactFlow().getZoom();
+            const showDetails = zoomLevel > 0.5;
+
+            return (
+                <div className={`custom-node ${data.status || ''}`}>
+                    <Handle type="target" position={Position.Top} />
+                    
+                    <div className="node-header">
+                        <div 
+                            className="node-icon" 
+                            style={{ backgroundColor: nodeColors[data.type] + '20', color: nodeColors[data.type] }}
+                        >
+                            {nodeIcons[data.type]}
+                        </div>
+                        <span>{data.label}</span>
+                    </div>
+                    
+                    {showDetails && (
+                        <>
+                            <div className="node-content">
+                                {data.description || '双击编辑节点描述'}
+                            </div>
+                            
+                            <div className="node-metrics">
+                                <div className="metric">
+                                    <span>⚡</span>
+                                    <span>{data.latency || '0'}ms</span>
+                                </div>
+                                <div className="metric">
+                                    <span>📊</span>
+                                    <span>{data.throughput || '0'}/s</span>
+                                </div>
+                            </div>
+                            
+                            {data.status === 'processing' && (
+                                <div className="progress-bar">
+                                    <div className="progress-fill" style={{ width: `${progress}%` }} />
+                                </div>
+                            )}
+                        </>
+                    )}
+                    
+                    <Handle type="source" position={Position.Bottom} />
+                </div>
+            );
+        };
+
+        // 自定义边组件
+        const CustomEdge = ({ id, sourceX, sourceY, targetX, targetY, sourcePosition, targetPosition, data }) => {
+            const [edgePath, labelX, labelY] = getBezierPath({
+                sourceX,
+                sourceY,
+                sourcePosition,
+                targetX,
+                targetY,
+                targetPosition,
+            });
+
+            return (
+                <>
+                    <path
+                        id={id}
+                        className="react-flow__edge-path animated-edge"
+                        d={edgePath}
+                        style={{
+                            stroke: data?.color || '#b1b1b7',
+                            strokeWidth: 2,
+                        }}
+                        markerEnd={`url(#arrow-${data?.color || 'default'})`}
+                    />
+                    {data?.label && (
+                        <text>
+                            <textPath
+                                href={`#${id}`}
+                                style={{ fontSize: 12, fill: '#666' }}
+                                startOffset="50%"
+                                textAnchor="middle"
+                            >
+                                {data.label}
+                            </textPath>
+                        </text>
+                    )}
+                </>
+            );
+        };
+
+        // 初始节点数据
+        const initialNodes = [
+            {
+                id: '1',
+                type: 'custom',
+                position: { x: 100, y: 100 },
+                data: { 
+                    label: '数据输入', 
+                    type: 'input',
+                    status: 'completed',
+                    description: 'CSV, JSON, API',
+                    latency: 12,
+                    throughput: 1000
+                }
+            },
+            {
+                id: '2',
+                type: 'custom',
+                position: { x: 300, y: 100 },
+                data: { 
+                    label: '数据处理', 
+                    type: 'process',
+                    status: 'processing',
+                    description: '清洗、转换、验证',
+                    latency: 45,
+                    throughput: 850
+                }
+            },
+            {
+                id: '3',
+                type: 'custom',
+                position: { x: 500, y: 100 },
+                data: { 
+                    label: 'AI 分析', 
+                    type: 'ai',
+                    status: 'ready',
+                    description: '机器学习模型推理',
+                    latency: 120,
+                    throughput: 200
+                }
+            },
+            {
+                id: '4',
+                type: 'custom',
+                position: { x: 700, y: 100 },
+                data: { 
+                    label: '结果输出', 
+                    type: 'output',
+                    status: 'ready',
+                    description: '仪表板、报告、API',
+                    latency: 8,
+                    throughput: 950
+                }
+            },
+            {
+                id: '5',
+                type: 'custom',
+                position: { x: 400, y: 300 },
+                data: { 
+                    label: '监控中心', 
+                    type: 'group',
+                    status: 'completed',
+                    description: '实时监控所有流程',
+                    latency: 5,
+                    throughput: 2000
+                }
+            }
+        ];
+
+        // 初始边数据
+        const initialEdges = [
+            { 
+                id: 'e1-2', 
+                source: '1', 
+                target: '2', 
+                type: 'custom',
+                animated: true,
+                data: { label: '100MB/s', color: '#48bb78' }
+            },
+            { 
+                id: 'e2-3', 
+                source: '2', 
+                target: '3', 
+                type: 'custom',
+                animated: true,
+                data: { label: '85MB/s', color: '#4299e1' }
+            },
+            { 
+                id: 'e3-4', 
+                source: '3', 
+                target: '4', 
+                type: 'custom',
+                animated: true,
+                data: { label: '20MB/s', color: '#9f7aea' }
+            },
+            { 
+                id: 'e2-5', 
+                source: '2', 
+                target: '5', 
+                type: 'custom',
+                data: { label: '监控', color: '#718096' }
+            },
+            { 
+                id: 'e3-5', 
+                source: '3', 
+                target: '5', 
+                type: 'custom',
+                data: { label: '指标', color: '#718096' }
+            }
+        ];
+
+        // 主应用组件
+        function App() {
+            const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes);
+            const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges);
+            const [isPanelCollapsed, setIsPanelCollapsed] = useState(false);
+            const [contextMenu, setContextMenu] = useState(null);
+            const [editDialog, setEditDialog] = useState(null);
+            const [tooltip, setTooltip] = useState('');
+            const [isSimulating, setIsSimulating] = useState(false);
+            const reactFlowWrapper = useRef(null);
+            const draggedType = useRef(null);
+
+            // 节点类型映射
+            const nodeTypesMap = useMemo(() => ({
+                custom: CustomNode
+            }), []);
+
+            // 边类型映射
+            const edgeTypesMap = useMemo(() => ({
+                custom: CustomEdge
+            }), []);
+
+            // 处理节点双击
+            const onNodeDoubleClick = useCallback((event, node) => {
+                setEditDialog({
+                    nodeId: node.id,
+                    label: node.data.label,
+                    description: node.data.description || ''
+                });
+            }, []);
+
+            // 处理右键菜单
+            const onNodeContextMenu = useCallback((event, node) => {
+                event.preventDefault();
+                setContextMenu({
+                    x: event.clientX,
+                    y: event.clientY,
+                    nodeId: node.id
+                });
+            }, []);
+
+            // 处理画布点击
+            const onPaneClick = useCallback(() => {
+                setContextMenu(null);
+            }, []);
+
+            // 处理连接
+            const onConnect = useCallback((params) => {
+                const newEdge = {
+                    ...params,
+                    id: `e${params.source}-${params.target}`,
+                    type: 'custom',
+                    animated: true,
+                    data: { 
+                        label: '0MB/s', 
+                        color: nodeColors[nodes.find(n => n.id === params.source)?.data.type] || '#b1b1b7'
+                    }
+                };
+                setEdges((eds) => [...eds, newEdge]);
+            }, [nodes, setEdges]);
+
+            // 处理拖放
+            const onDragOver = useCallback((event) => {
+                event.preventDefault();
+                event.dataTransfer.dropEffect = 'move';
+            }, []);
+
+            const onDrop = useCallback((event) => {
+                event.preventDefault();
+                
+                const reactFlowBounds = reactFlowWrapper.current.getBoundingClientRect();
+                const type = draggedType.current;
+                
+                if (!type) return;
+
+                const position = {
+                    x: event.clientX - reactFlowBounds.left - 90,
+                    y: event.clientY - reactFlowBounds.top - 40
+                };
+
+                const newNode = {
+                    id: `node_${Date.now()}`,
+                    type: 'custom',
+                    position,
+                    data: { 
+                        label: `新${type}节点`, 
+                        type: type,
+                        status: 'ready',
+                        description: '双击编辑描述',
+                        latency: 0,
+                        throughput: 0
+                    }
+                };
+
+                setNodes((nds) => [...nds, newNode]);
+                draggedType.current = null;
+            }, [setNodes]);
+
+            // 开始模拟
+            const startSimulation = useCallback(() => {
+                setIsSimulating(true);
+                setTooltip('模拟已开始');
+                setTimeout(() => setTooltip(''), 2000);
+
+                // 模拟数据流动
+                const interval = setInterval(() => {
+                    setNodes((nds) => nds.map(node => {
+                        if (node.data.type === 'process') {
+                            return {
+                                ...node,
+                                data: {
+                                    ...node.data,
+                                    status: 'processing',
+                                    latency: Math.floor(Math.random() * 100),
+                                    throughput: Math.floor(Math.random() * 1000)
+                                }
+                            };
+                        }
+                        return node;
+                    }));
+
+                    setEdges((eds) => eds.map(edge => ({
+                        ...edge,
+                        data: {
+                            ...edge.data,
+                            label: `${Math.floor(Math.random() * 100)}MB/s`
+                        }
+                    })));
+                }, 1000);
+
+                setTimeout(() => {
+                    clearInterval(interval);
+                    setIsSimulating(false);
+                    setTooltip('模拟已停止');
+                    setTimeout(() => setTooltip(''), 2000);
+                }, 10000);
+            }, [setNodes, setEdges]);
+
+            // 重置流程
+            const resetFlow = useCallback(() => {
+                setNodes(initialNodes);
+                setEdges(initialEdges);
+                setTooltip('流程已重置');
+                setTimeout(() => setTooltip(''), 2000);
+            }, [setNodes, setEdges]);
+
+            // 保存编辑
+            const saveEdit = useCallback(() => {
+                if (!editDialog) return;
+
+                setNodes((nds) => nds.map(node => {
+                    if (node.id === editDialog.nodeId) {
+                        return {
+                            ...node,
+                            data: {
+                                ...node.data,
+                                label: editDialog.label,
+                                description: editDialog.description
+                            }
+                        };
+                    }
+                    return node;
+                }));
+
+                setEditDialog(null);
+            }, [editDialog, setNodes]);
+
+            // 删除节点
+            const deleteNode = useCallback((nodeId) => {
+                setNodes((nds) => nds.filter(n => n.id !== nodeId));
+                setEdges((eds) => eds.filter(e => e.source !== nodeId && e.target !== nodeId));
+                setContextMenu(null);
+            }, [setNodes, setEdges]);
+
+            // 键盘快捷键
+            useEffect(() => {
+                const handleKeyPress = (e) => {
+                    if (e.target.tagName === 'INPUT') return;
+
+                    switch(e.key.toLowerCase()) {
+                        case 's':
+                            if (!isSimulating) startSimulation();
+                            break;
+                        case 'r':
+                            resetFlow();
+                            break;
+                        case 'h':
+                            setIsPanelCollapsed(prev => !prev);
+                            break;
+                        case ' ':
+                            e.preventDefault();
+                            // fitView 功能需要在 ReactFlow 组件内部使用
+                            break;
+                    }
+                };
+
+                window.addEventListener('keydown', handleKeyPress);
+                return () => window.removeEventListener('keydown', handleKeyPress);
+            }, [isSimulating, startSimulation, resetFlow]);
+
+            return (
+                <div style={{ width: '100vw', height: '100vh' }} ref={reactFlowWrapper}>
+                    <ReactFlowComponent
+                        nodes={nodes}
+                        edges={edges}
+                        onNodesChange={onNodesChange}
+                        onEdgesChange={onEdgesChange}
+                        onConnect={onConnect}
+                        onNodeDoubleClick={onNodeDoubleClick}
+                        onNodeContextMenu={onNodeContextMenu}
+                        onPaneClick={onPaneClick}
+                        onDragOver={onDragOver}
+                        onDrop={onDrop}
+                        nodeTypes={nodeTypesMap}
+                        edgeTypes={edgeTypesMap}
+                        fitView
+                        attributionPosition="bottom-left"
+                    >
+                        <Controls />
+                        <MiniMap 
+                            nodeColor={node => nodeColors[node.data?.type] || '#718096'}
+                            style={{
+                                backgroundColor: 'rgba(255, 255, 255, 0.8)',
+                                borderRadius: '8px',
+                            }}
+                        />
+                        <Background variant="dots" gap={20} size={1} />
+                        
+                        {/* 自定义标记 */}
+                        <svg>
+                            <defs>
+                                {Object.entries(nodeColors).map(([type, color]) => (
+                                    <marker
+                                        key={type}
+                                        id={`arrow-${color}`}
+                                        viewBox="0 0 10 10"
+                                        refX="9"
+                                        refY="5"
+                                        markerWidth="5"
+                                        markerHeight="5"
+                                        orient="auto"
+                                    >
+                                        <path d="M 0 0 L 10 5 L 0 10 z" fill={color} />
+                                    </marker>
+                                ))}
+                                <marker
+                                    id="arrow-default"
+                                    viewBox="0 0 10 10"
+                                    refX="9"
+                                    refY="5"
+                                    markerWidth="5"
+                                    markerHeight="5"
+                                    orient="auto"
+                                >
+                                    <path d="M 0 0 L 10 5 L 0 10 z" fill="#b1b1b7" />
+                                </marker>
+                            </defs>
+                        </svg>
+                    </ReactFlowComponent>
+
+                    {/* 控制面板 */}
+                    <div className={`control-panel ${isPanelCollapsed ? 'collapsed' : ''}`}>
+                        <div className="panel-header">
+                            <h3 className="panel-title">{!isPanelCollapsed && '架构控制台'}</h3>
+                            <button 
+                                className="collapse-btn"
+                                onClick={() => setIsPanelCollapsed(!isPanelCollapsed)}
+                            >
+                                {isPanelCollapsed ? '▶' : '◀'}
+                            </button>
+                        </div>
+                        
+                        <div className="panel-content">
+                            <div className="control-group">
+                                <label className="control-label">流程控制</label>
+                                <div className="control-buttons">
+                                    <button 
+                                        className="control-btn"
+                                        onClick={startSimulation}
+                                        disabled={isSimulating}
+                                    >
+                                        {isSimulating ? '模拟中...' : '开始模拟 (S)'}
+                                    </button>
+                                    <button 
+                                        className="control-btn secondary"
+                                        onClick={resetFlow}
+                                    >
+                                        重置 (R)
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div className="control-group">
+                                <label className="control-label">添加节点（拖拽到画布）</label>
+                                <div className="control-buttons" style={{ flexWrap: 'wrap' }}>
+                                    {Object.entries(nodeTypes).map(([key, type]) => (
+                                        <div
+                                            key={key}
+                                            className="control-btn secondary"
+                                            draggable
+                                            onDragStart={() => draggedType.current = key}
+                                            style={{ cursor: 'grab' }}
+                                        >
+                                            {nodeIcons[key]} {key}
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            <div className="control-group">
+                                <label className="control-label">快捷键</label>
+                                <div style={{ fontSize: '11px', color: '#718096' }}>
+                                    <div>S - 开始模拟</div>
+                                    <div>R - 重置流程</div>
+                                    <div>H - 隐藏/显示面板</div>
+                                    <div>空格 - 适应视图</div>
+                                    <div>双击 - 编辑节点</div>
+                                    <div>右键 - 节点菜单</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* 浮动操作按钮 */}
+                    <div className="fab-container">
+                        <button className="fab" onClick={() => window.location.reload()}>
+                            🔄
+                        </button>
+                        <button 
+                            className="fab" 
+                            onClick={() => {
+                                const data = {
+                                    nodes: nodes,
+                                    edges: edges
+                                };
+                                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                                const url = URL.createObjectURL(blob);
+                                const a = document.createElement('a');
+                                a.href = url;
+                                a.download = 'architecture-flow.json';
+                                a.click();
+                            }}
+                        >
+                            💾
+                        </button>
+                    </div>
+
+                    {/* 右键菜单 */}
+                    {contextMenu && (
+                        <div 
+                            className="context-menu"
+                            style={{ left: contextMenu.x, top: contextMenu.y }}
+                        >
+                            <div 
+                                className="context-menu-item"
+                                onClick={() => {
+                                    onNodeDoubleClick(null, { id: contextMenu.nodeId, data: nodes.find(n => n.id === contextMenu.nodeId)?.data });
+                                    setContextMenu(null);
+                                }}
+                            >
+                                ✏️ 编辑节点
+                            </div>
+                            <div 
+                                className="context-menu-item"
+                                onClick={() => deleteNode(contextMenu.nodeId)}
+                            >
+                                🗑️ 删除节点
+                            </div>
+                            <div 
+                                className="context-menu-item"
+                                onClick={() => {
+                                    const node = nodes.find(n => n.id === contextMenu.nodeId);
+                                    const newNode = {
+                                        ...node,
+                                        id: `node_${Date.now()}`,
+                                        position: {
+                                            x: node.position.x + 50,
+                                            y: node.position.y + 50
+                                        }
+                                    };
+                                    setNodes(nds => [...nds, newNode]);
+                                    setContextMenu(null);
+                                }}
+                            >
+                                📋 复制节点
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 编辑对话框 */}
+                    {editDialog && (
+                        <div className="edit-dialog">
+                            <h3>编辑节点</h3>
+                            <input
+                                className="edit-input"
+                                value={editDialog.label}
+                                onChange={(e) => setEditDialog({ ...editDialog, label: e.target.value })}
+                                placeholder="节点标签"
+                            />
+                            <input
+                                className="edit-input"
+                                value={editDialog.description}
+                                onChange={(e) => setEditDialog({ ...editDialog, description: e.target.value })}
+                                placeholder="节点描述"
+                            />
+                            <div className="edit-actions">
+                                <button 
+                                    className="control-btn secondary"
+                                    onClick={() => setEditDialog(null)}
+                                >
+                                    取消
+                                </button>
+                                <button 
+                                    className="control-btn"
+                                    onClick={saveEdit}
+                                >
+                                    保存
+                                </button>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* 提示信息 */}
+                    <div className={`tooltip ${tooltip ? 'visible' : ''}`}>
+                        {tooltip}
+                    </div>
+                </div>
+            );
+        }
+
+        // 渲染应用
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
